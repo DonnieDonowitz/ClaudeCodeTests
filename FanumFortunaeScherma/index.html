@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fanum Fortunae Scherma - Società Schermistica di Fano</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --granata: #a83255;
+            --granata-dark: #8b2944;
+            --granata-light: #c94a6b;
+            --granata-pale: #e8d4d4;
+            --bianco: #1a1a1a;
+            --nero: #f5f5f5;
+            --oro: #b8912a;
+            --oro-chiaro: #d4b54a;
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --glass-shadow: rgba(168, 50, 85, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #faf8f9 0%, #f0e8eb 25%, #f5ebeef 50%, #ebe2e6 75%, #f2e9ed 100%);
+            background-attachment: fixed;
+            color: #1a1a1a;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(168, 50, 85, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(212, 181, 74, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(168, 50, 85, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Header con navigazione - White Glass */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(25px) saturate(200%);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            border-bottom: 1px solid rgba(168, 50, 85, 0.15);
+            box-shadow: 0 2px 20px rgba(168, 50, 85, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0.8rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s ease;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .logo-icon img {
+            width: 85%;
+            height: 85%;
+            object-fit: contain;
+        }
+
+        .logo-icon:hover {
+            transform: rotateY(180deg);
+        }
+
+        .logo-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .logo-text {
+            font-family: 'Cinzel', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--granata-dark);
+            letter-spacing: 0.5px;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        nav a {
+            color: var(--granata-dark);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            position: relative;
+            padding: 0.5rem 0.8rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--granata);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        nav a:hover {
+            color: var(--granata);
+            background: rgba(168, 50, 85, 0.08);
+        }
+
+        nav a:hover::after {
+            width: 60%;
+        }
+
+        nav a.active {
+            color: var(--granata);
+            background: rgba(168, 50, 85, 0.12);
+        }
+
+        nav a.active::after {
+            width: 60%;
+        }
+
+        .btn-accedi {
+            background: linear-gradient(135deg, var(--granata), var(--granata-dark));
+            color: white;
+            padding: 0.7rem 1.4rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(168, 50, 85, 0.3);
+            position: relative;
+            overflow: hidden;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-accedi::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-accedi:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(168, 50, 85, 0.4);
+        }
+
+        .btn-accedi:hover::before {
+            left: 100%;
+        }
+
+        /* Hero Section con effetto 3D - Light Glass */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23a83255' fill-opacity='0.08'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.6;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+            perspective: 1000px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 40px;
+            padding: 4rem 6rem;
+            box-shadow: 
+                0 8px 32px rgba(168, 50, 85, 0.1),
+                0 2px 8px rgba(168, 50, 85, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .hero-logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1.5rem;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(168, 50, 85, 0.15);
+            animation: float3D 6s ease-in-out infinite;
+        }
+
+        .hero-logo img {
+            width: 85%;
+            height: 85%;
+            object-fit: contain;
+        }
+
+        .hero-title {
+            font-size: 3.8rem;
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            transform-style: preserve-3d;
+            animation: float3D 6s ease-in-out infinite;
+            letter-spacing: 2px;
+        }
+
+        @keyframes float3D {
+            0%, 100% { transform: translateY(0) rotateX(0); }
+            50% { transform: translateY(-15px) rotateX(3deg); }
+        }
+
+        .hero-title span {
+            display: block;
+            background: linear-gradient(135deg, var(--granata) 0%, var(--granata-dark) 50%, var(--granata-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: rgba(26, 26, 26, 0.7);
+            margin-bottom: 2rem;
+            font-weight: 400;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        /* Spada 3D decorativa */
+        .fencing-sword {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            opacity: 0.1;
+            animation: rotate3D 20s linear infinite;
+        }
+
+        .fencing-sword.left {
+            left: -100px;
+            top: 20%;
+            transform: rotate(45deg);
+        }
+
+        .fencing-sword.right {
+            right: -100px;
+            bottom: 20%;
+            transform: rotate(-45deg);
+        }
+
+        @keyframes rotate3D {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Sezione Chi Siamo - Glass */
+        .chi-siamo {
+            padding: 6rem 2rem;
+            background: transparent;
+            position: relative;
+        }
+
+        .section-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+            color: var(--granata-dark);
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--granata), var(--oro));
+            margin: 1rem auto 0;
+        }
+
+        .chi-siamo-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .chi-siamo-text p {
+            font-size: 1.1rem;
+            line-height: 1.85;
+            margin-bottom: 1.5rem;
+            color: rgba(26, 26, 26, 0.85);
+            font-weight: 400;
+        }
+
+        .chi-siamo-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(25px) saturate(200%);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            padding: 2.5rem;
+            transform-style: preserve-3d;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 8px 32px rgba(168, 50, 85, 0.08),
+                0 2px 8px rgba(168, 50, 85, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .chi-siamo-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 0 25px 50px rgba(168, 50, 85, 0.15);
+        }
+
+        .card-stat {
+            text-align: center;
+            padding: 1.2rem;
+        }
+
+        .stat-number {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--granata);
+            font-family: 'Cinzel', serif;
+            text-shadow: 0 2px 10px rgba(168, 50, 85, 0.2);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: rgba(26, 26, 26, 0.65);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 500;
+        }
+
+        /* Sezione News con Carosello - Glass */
+        .news {
+            padding: 6rem 0;
+            background: transparent;
+            position: relative;
+        }
+
+        .news-carousel-container {
+            position: relative;
+            overflow: hidden;
+            padding: 2rem 0;
+        }
+
+        .news-carousel {
+            display: flex;
+            gap: 2rem;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0 2rem;
+        }
+
+        .news-card {
+            min-width: 350px;
+            max-width: 350px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(25px) saturate(200%);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            box-shadow: 
+                0 8px 32px rgba(168, 50, 85, 0.08),
+                0 2px 8px rgba(168, 50, 85, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .news-card:hover {
+            transform: translateY(-15px) rotateY(10deg);
+            box-shadow: 0 25px 50px rgba(168, 50, 85, 0.15);
+            border-color: var(--granata);
+        }
+
+        .news-image {
+            height: 200px;
+            background: linear-gradient(135deg, var(--granata), var(--granata-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .news-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 0L60 35H97L67 57L77 91L50 70L23 91L33 57L3 35H40L50 0Z' fill='%23ffffff' fill-opacity='0.1'/%3E%3C/svg%3E");
+            background-size: 50px 50px;
+            z-index: 1;
+        }
+
+        .news-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(168, 41, 85, 0.3) 100%);
+            z-index: 0;
+        }
+
+        .news-image svg {
+            width: 80px;
+            height: 80px;
+            opacity: 0.8;
+            z-index: 1;
+        }
+
+        .news-content {
+            padding: 1.5rem;
+        }
+
+        .news-date {
+            font-size: 0.8rem;
+            color: var(--granata);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .news-title {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--granata-dark);
+            line-height: 1.4;
+            font-weight: 600;
+        }
+
+        .news-excerpt {
+            font-size: 0.9rem;
+            color: rgba(26, 26, 26, 0.7);
+            line-height: 1.6;
+        }
+
+        .carousel-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .carousel-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid var(--granata);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--granata);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .carousel-btn:hover {
+            background: var(--granata);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Sezione Contatti - Glass */
+        .contatti {
+            padding: 6rem 2rem;
+            background: transparent;
+        }
+
+        .contatti-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .contatto-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(25px) saturate(200%);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            padding: 2.2rem;
+            text-align: center;
+            transform-style: preserve-3d;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 8px 32px rgba(168, 50, 85, 0.08),
+                0 2px 8px rgba(168, 50, 85, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .contatto-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            border-color: var(--granata);
+            box-shadow: 0 20px 40px rgba(168, 50, 85, 0.15);
+        }
+
+        .contatto-icon {
+            width: 65px;
+            height: 65px;
+            margin: 0 auto 1.2rem;
+            background: linear-gradient(135deg, var(--granata), var(--granata-light));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(168, 50, 85, 0.3);
+        }
+
+        .contatto-icon svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+
+        .contatto-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--granata);
+        }
+
+        .contatto-info {
+            color: rgba(26, 26, 26, 0.8);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .contatto-info:hover {
+            color: var(--granata);
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .social-link {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid rgba(128, 0, 32, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .social-link:hover {
+            background: var(--granata);
+            border-color: var(--granata);
+            transform: translateY(-5px);
+        }
+
+        .social-link svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--bianco);
+        }
+
+        /* Footer - Glass */
+        footer {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .footer-logo {
+            font-family: 'Cinzel', serif;
+            font-size: 1.2rem;
+            color: var(--granata-dark);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-links a {
+            color: rgba(26, 26, 26, 0.7);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--oro);
+        }
+
+        .footer-copy {
+            width: 100%;
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(168, 50, 85, 0.2);
+            color: rgba(26, 26, 26, 0.5);
+            font-size: 0.8rem;
+        }
+
+        /* Banner Cookie - Glass */
+        .cookie-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 9999;
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 -8px 32px var(--glass-shadow);
+        }
+
+        .cookie-banner.show {
+            transform: translateY(0);
+        }
+
+        .cookie-text {
+            flex: 1;
+            margin-right: 2rem;
+        }
+
+        .cookie-text p {
+            font-size: 0.9rem;
+            color: rgba(26, 26, 26, 0.8);
+        }
+
+        .cookie-text a {
+            color: var(--granata);
+            text-decoration: none;
+        }
+
+        .cookie-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .cookie-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .cookie-btn.accept {
+            background: linear-gradient(135deg, var(--granata), var(--granata-light));
+            color: var(--bianco);
+        }
+
+        .cookie-btn.accept:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(128, 0, 32, 0.4);
+        }
+
+        .cookie-btn.decline {
+            background: transparent;
+            border: 1px solid rgba(245, 245, 245, 0.3);
+            color: rgba(245, 245, 245, 0.8);
+        }
+
+        .cookie-btn.decline:hover {
+            border-color: var(--bianco);
+            color: var(--bianco);
+        }
+
+        /* Pagine Privacy e Termini */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(200, 180, 190, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 10000;
+            overflow-y: auto;
+        }
+
+        .modal.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            max-width: 800px;
+            margin: 5rem auto;
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 3rem;
+            transform-style: preserve-3d;
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px var(--glass-shadow);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(168, 50, 85, 0.3);
+        }
+
+        .modal-title {
+            font-size: 2rem;
+            color: var(--granata);
+        }
+
+        .modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(26, 26, 26, 0.2);
+            background: var(--glass-bg);
+            color: var(--granata);
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--granata);
+            color: white;
+            border-color: var(--granata);
+        }
+
+        .modal-body {
+            line-height: 1.8;
+            color: rgba(26, 26, 26, 0.85);
+        }
+
+        .modal-body h3 {
+            color: var(--granata);
+            margin: 2rem 0 1rem;
+            font-size: 1.3rem;
+        }
+
+        .modal-body p {
+            margin-bottom: 1rem;
+        }
+
+        .modal-body ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-body li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+
+            .chi-siamo-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .news-card {
+                min-width: 300px;
+            }
+
+            .cookie-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .cookie-text {
+                margin-right: 0;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <div class="logo-icon">
+                    <img src="images/logo.png" alt="Logo Fanum Fortunae Scherma">
+                </div>
+                <span class="logo-text">Fanum Fortunae Scherma</span>
+            </div>
+            <nav>
+                <a href="#chi-siamo">Chi Siamo</a>
+                <a href="#news">News</a>
+                <a href="#contatti">Contatti</a>
+                <a href="https://app.fanumfortunae.it" class="btn-accedi">Accedi / Iscriviti</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <svg class="fencing-sword left" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 0 L55 80 L70 75 L60 90 L95 95 L55 105 L50 200 L45 105 L5 95 L40 90 L30 75 L45 80 Z" 
+                  fill="rgba(128,0,32,0.3)" stroke="rgba(201,162,39,0.5)" stroke-width="1"/>
+        </svg>
+        <svg class="fencing-sword right" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 0 L55 80 L70 75 L60 90 L95 95 L55 105 L50 200 L45 105 L5 95 L40 90 L30 75 L45 80 Z" 
+                  fill="rgba(128,0,32,0.3)" stroke="rgba(201,162,39,0.5)" stroke-width="1"/>
+        </svg>
+        <div class="hero-content">
+            <div class="hero-logo">
+                <img src="images/logo.png" alt="Logo Fanum Fortunae Scherma">
+            </div>
+            <h1 class="hero-title">
+                <span>Fanum Fortunae Scherma</span>
+            </h1>
+            <p class="hero-subtitle">Scherma a Fano dal 2007</p>
+        </div>
+    </section>
+
+    <!-- Chi Siamo -->
+    <section id="chi-siamo" class="chi-siamo">
+        <div class="section-container">
+            <h2 class="section-title">La Nostra Storia</h2>
+            <div class="chi-siamo-content">
+                <div class="chi-siamo-text">
+                    <p>La <strong>Fanum Fortunae Scherma</strong> è una società sportiva dilettantistica specializzata nella pratica della scherma, situata nella bellissima città di Fano, nelle Marche.</p>
+                    <p>Il nostro nome deriva dall'antico nome latino di Fano, <em>Fanum Fortunae</em>, tempio dedicato alla dea Fortuna. Da allora, la nostra società incarna i valori di precisione, disciplina e onore che caratterizzano questo nobile sport.</p>
+                    <p>Offriamo corsi per tutte le età e livelli, dalla scuola elementare fino agli agonisti, con istruttori qualificati e un ambiente familiare dove ogni atleta può crescere tecnicamente e umanamente.</p>
+                </div>
+                <div class="chi-siamo-card">
+                        <div class="card-stat">
+                            <div class="stat-number">2007</div>
+                            <div class="stat-label">Anno di Fondazione</div>
+                        </div>
+                    <div class="card-stat">
+                        <div class="stat-number">3°</div>
+                        <div class="stat-label">Posto Coppa Italia 2022</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="stat-number">50+</div>
+                        <div class="stat-label">Atleti Tesserati</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- News -->
+    <section id="news" class="news">
+        <div class="section-container">
+            <h2 class="section-title">Ultime News</h2>
+            <div class="news-carousel-container">
+                <div class="news-carousel" id="newsCarousel">
+                    <article class="news-card">
+                        <div class="news-image" style="background-image: url('images/news/grand-prix-esordienti.jpg'); background-size: cover; background-position: center;">
+                            <div class="news-overlay"></div>
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">25 Maggio 2025</div>
+                            <h3 class="news-title">Grand Prix Esordienti a Fano</h3>
+                            <p class="news-excerpt">Quinta Prova Regionale Promozionale del Grand Prix Gioco Scherma. La manifestazione ha visto protagonisti mini-atleti da tutta la Marche presso la Pista polivalente Sassonia.</p>
+                        </div>
+                    </article>
+                    <article class="news-card">
+                        <div class="news-image" style="background-image: url('images/news/campionato-loro-piceno.jpg'); background-size: cover; background-position: center;">
+                            <div class="news-overlay"></div>
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">24 Marzo 2025</div>
+                            <h3 class="news-title">Campionato Regionale U14 a Loro Piceno</h3>
+                            <p class="news-excerpt">Grandi risultati per i nostri giovani atleti! Podi per Andrea Fiacconi (1° Giovanissimi), Sofia Bettinardi (1° Bambine), Riccardo Ridolfi (1° Maschietti) e altre medaglie.</p>
+                        </div>
+                    </article>
+                    <article class="news-card">
+                        <div class="news-image" style="background-image: url('images/news/podio-jesi.jpg'); background-size: cover; background-position: center;">
+                            <div class="news-overlay"></div>
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">10 Febbraio 2025</div>
+                            <h3 class="news-title">Trionfo ai Campionati Regionali di Jesi</h3>
+                            <p class="news-excerpt">La Fanum Fortunae Scherma trionfa nelle gare a squadre femminile e maschile al Palascherma di Jesi. Grande prestazione dei nostri atleti!</p>
+                        </div>
+                    </article>
+                    <article class="news-card">
+                        <div class="news-image" style="background-image: url('images/news/podio-ancona.jpg'); background-size: cover; background-position: center;">
+                            <div class="news-overlay"></div>
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">27 Gennaio 2025</div>
+                            <h3 class="news-title">Podio Femminile ad Ancona</h3>
+                            <p class="news-excerpt">Fine settimana di successi per le nostre atlete che conquistano il secondo e terzo posto agli Interregionali di scherma.</p>
+                        </div>
+                    </article>
+                    <article class="news-card">
+                        <div class="news-image" style="background-image: url('images/news/podio-ariccia.jpg'); background-size: cover; background-position: center;">
+                            <div class="news-overlay"></div>
+                        </div>
+                        <div class="news-content">
+                            <div class="news-date">4 Novembre 2024</div>
+                            <h3 class="news-title">Podio agli Interregionali di Ariccia</h3>
+                            <p class="news-excerpt">La Fanum Fortunae sale sul podio nella competizione interregionale di Ariccia, confermando l'eccellenza della scherma fanese.</p>
+                        </div>
+                    </article>
+                </div>
+                <div class="carousel-controls">
+                    <button class="carousel-btn" id="prevBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--granata)">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                        </svg>
+                    </button>
+                    <button class="carousel-btn" id="nextBtn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--granata)">
+                            <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contatti -->
+    <section id="contatti" class="contatti">
+        <div class="section-container">
+            <h2 class="section-title">Contattaci</h2>
+            <div class="contatti-grid">
+                <div class="contatto-card">
+                    <div class="contatto-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="contatto-title">Email</h3>
+                    <a href="mailto:fanoscherma@libero.it" class="contatto-info">fanoscherma@libero.it</a>
+                </div>
+                <div class="contatto-card">
+                    <div class="contatto-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        </svg>
+                    </div>
+                    <h3 class="contatto-title">Sede</h3>
+                    <p class="contatto-info">Fano, Marche</p>
+                    <p class="contatto-info" style="font-size: 0.85rem; margin-top: 0.5rem;">Palestra Scuola "Gandiglio" - Fano</p>
+                </div>
+                <div class="contatto-card">
+                    <div class="contatto-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <h3 class="contatto-title">Partita IVA</h3>
+                    <p class="contatto-info">02456780124</p>
+                </div>
+                <div class="contatto-card">
+                    <div class="contatto-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                        </svg>
+                    </div>
+                    <h3 class="contatto-title">Social</h3>
+                    <div class="social-links">
+                        <a href="https://instagram.com/fanum_fortunae_scherma" target="_blank" class="social-link" aria-label="Instagram">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+                            </svg>
+                        </a>
+                        <a href="https://facebook.com/fanoscherma" target="_blank" class="social-link" aria-label="Facebook">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.15 5.96C15.21 5.96 16.16 6.15 16.16 6.15V8.62H15.03C13.79 8.62 13.4 9.39 13.4 10.18V12.06H16.18L15.73 14.96H13.4V21.96C18.19 21.21 22 17.06 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">Fanum Fortunae Scherma</div>
+            <div class="footer-links">
+                <a href="#" onclick="openModal('privacy')">Privacy Policy</a>
+                <a href="#" onclick="openModal('termini')">Termini e Condizioni</a>
+                <a href="#contatti">Contatti</a>
+            </div>
+            <div class="footer-copy">
+                &copy; 2025 Fanum Fortunae Scherma. Tutti i diritti riservati.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Banner Cookie -->
+    <div class="cookie-banner" id="cookieBanner">
+        <div class="cookie-text">
+            <p>Questo sito utilizza cookie per migliorare la tua esperienza. <a href="#" onclick="openModal('privacy')">Leggi la Privacy Policy</a></p>
+        </div>
+        <div class="cookie-buttons">
+            <button class="cookie-btn decline" onclick="rejectCookies()">Rifiuta</button>
+            <button class="cookie-btn accept" onclick="acceptCookies()">Accetta</button>
+        </div>
+    </div>
+
+    <!-- Modal Privacy Policy -->
+    <div class="modal" id="privacyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Privacy Policy</h2>
+                <button class="modal-close" onclick="closeModal('privacy')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>1. Introduzione</h3>
+                <p>La presente Privacy Policy descrive come Fanum Fortunae Scherma raccoglie, utilizza e protegge i tuoi dati personali ai sensi del Regolamento UE 2016/679 (GDPR) e del D.Lgs. 196/2003 e successive modifiche.</p>
+                
+                <h3>2. Titolare del Trattamento</h3>
+                <p>Il titolare del trattamento dei dati è:<br>
+                <strong>Fanum Fortunae Scherma</strong><br>
+                Email: fanoscherma@libero.it<br>
+                Partita IVA: 02456780124</p>
+                
+                <h3>3. Tipologie di Dati Raccolti</h3>
+                <p>Raccogliamo i seguenti dati personali:</p>
+                <ul>
+                    <li>Dati anagrafici (nome, cognome, data di nascita)</li>
+                    <li>Recapiti (email, telefono, indirizzo)</li>
+                    <li>Dati relativi alla salute (certificati medici per attività sportiva)</li>
+                    <li>Dati di navigazione (cookie tecnici)</li>
+                </ul>
+                
+                <h3>4. Finalità del Trattamento</h3>
+                <p>I dati vengono trattati per:</p>
+                <ul>
+                    <li>Gestione delle iscrizioni e tesseramenti</li>
+                    <li>Organizzazione di attività sportive</li>
+                    <li>Comunicazioni relative all'attività della società</li>
+                    <li>Adempimenti fiscali e contabili</li>
+                </ul>
+                
+                <h3>5. Base Giuridica</h3>
+                <p>Il trattamento dei dati si basa sul tuo consenso esplicito e sulla necessità di eseguire il contratto di iscrizione.</p>
+                
+                <h3>6. Comunicazione dei Dati</h3>
+                <p>I dati potranno essere comunicati a:</p>
+                <ul>
+                    <li>Federazione Italiana Scherma (FIS)</li>
+                    <li>Enti sportivi regionali</li>
+                    <li>Professionisti per adempimenti fiscali</li>
+                </ul>
+                
+                <h3>7. Diritti dell'Interessato</h3>
+                <p>Hai diritto di:</p>
+                <ul>
+                    <li>Accedere ai tuoi dati personali</li>
+                    <li>Rectificare i dati inesatti</li>
+                    <li>Cancellare i dati ("diritto all'oblio")</li>
+                    <li>Limitare il trattamento</li>
+                    <li>Portabilità dei dati</li>
+                    <li>Opporti al trattamento</li>
+                </ul>
+                
+                <h3>8. Cookie</h3>
+                <p>Questo sito utilizza solo cookie tecnici necessari al funzionamento. Non vengono utilizzati cookie di profilazione.</p>
+                
+                <h3>9. Periodo di Conservazione</h3>
+                <p>I dati saranno conservati per il tempo necessario alle finalità indicate e comunque non oltre 10 anni dalla cessazione del rapporto.</p>
+                
+                <h3>10. Reclamo</h3>
+                <p>Hai diritto di proporre reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Termini e Condizioni -->
+    <div class="modal" id="terminiModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Termini e Condizioni di Servizio</h2>
+                <button class="modal-close" onclick="closeModal('termini')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>1. Premessa</h3>
+                <p>I presenti Termini e Condizioni regolano il rapporto tra Fanum Fortunae Scherma e gli utenti del presente sito web e dei servizi offerti dalla società sportiva.</p>
+                
+                <h3>2. Servizi Offerti</h3>
+                <p>Fanum Fortunae Scherma offre:</p>
+                <ul>
+                    <li>Corsi di scherma per bambini, ragazzi e adulti</li>
+                    <li>Attività agonistica</li>
+                    <li>Stage e tornei</li>
+                    <li>Accesso alla piattaforma online (app.fanumfortunae.it)</li>
+                </ul>
+                
+                <h3>3. Iscrizione</h3>
+                <p>L'iscrizione ai corsi avviene mediante:</p>
+                <ul>
+                    <li>Compilazione del modulo di iscrizione</li>
+                    <li>Presentazione del certificato medico sportivo</li>
+                    <li>Pagamento della quota associativa</li>
+                </ul>
+                
+                <h3>4. Quote e Pagamenti</h3>
+                <p>Le quote associative sono determinate annualmente dal Consiglio Direttivo. Il pagamento può essere effettuato tramite bonifico bancario o altri metodi indicati.</p>
+                
+                <h3>5. Obblighi dell'Utente</h3>
+                <p>L'utente si impegna a:</p>
+                <ul>
+                    <li>Fornire dati veritieri e aggiornati</li>
+                    <li>Comunicare variazioni dei dati anagrafici</li>
+                    <li>Rispettare il regolamento interno della società</li>
+                    <li>Presentare certificato medico in corso di validità</li>
+                </ul>
+                
+                <h3>6. Limitazione di Responsabilità</h3>
+                <p>Fanum Fortunae Scherma non si assume responsabilità per danni a persone o cose derivanti dalla pratica sportiva, salvo quanto previsto dalla polizza assicurativa federale.</p>
+                
+                <h3>7. Proprietà Intellettuale</h3>
+                <p>Tutti i contenuti del sito (testi, immagini, loghi) sono proprietà di Fanum Fortunae Scherma o dei rispettivi proprietari. È vietata la riproduzione non autorizzata.</p>
+                
+                <h3>8. Modifiche</h3>
+                <p>Fanum Fortunae Scherma si riserva il diritto di modificare i presenti termini in qualsiasi momento. Le modifiche saranno pubblicate sul sito.</p>
+                
+                <h3>9. Legge Applicabile</h3>
+                <p>I presenti termini sono regolati dalla legge italiana. Per qualsiasi controversia sarà competente il Foro di Pesaro.</p>
+                
+                <h3>10. Contatti</h3>
+                <p>Per informazioni sui termini e condizioni:<br>
+                Email: fanoscherma@libero.it</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Active navigation link on click
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                document.querySelectorAll('nav a').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Carosello News
+        const carousel = document.getElementById('newsCarousel');
+        const cards = document.querySelectorAll('.news-card');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        let currentIndex = 0;
+        const cardWidth = 370;
+
+        function updateCarousel() {
+            carousel.style.transform = `translateX(-${currentIndex * cardWidth}px)`;
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateCarousel();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < cards.length - 2) {
+                currentIndex++;
+                updateCarousel();
+            }
+        });
+
+        // Header scroll effect
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.style.padding = '0.6rem 2rem';
+                header.style.background = 'rgba(255, 255, 255, 0.95)';
+                header.style.boxShadow = '0 2px 20px rgba(168, 50, 85, 0.12)';
+            } else {
+                header.style.padding = '0.8rem 2rem';
+                header.style.background = 'rgba(255, 255, 255, 0.85)';
+                header.style.boxShadow = '0 2px 20px rgba(168, 50, 85, 0.08)';
+            }
+        });
+
+        // Cookie Banner
+        function showCookieBanner() {
+            if (!localStorage.getItem('cookiesAccepted')) {
+                setTimeout(() => {
+                    document.getElementById('cookieBanner').classList.add('show');
+                }, 1000);
+            }
+        }
+
+        function acceptCookies() {
+            localStorage.setItem('cookiesAccepted', 'true');
+            document.getElementById('cookieBanner').classList.remove('show');
+        }
+
+        function rejectCookies() {
+            localStorage.setItem('cookiesAccepted', 'false');
+            document.getElementById('cookieBanner').classList.remove('show');
+        }
+
+        // Modal
+        function openModal(type) {
+            event.preventDefault();
+            document.getElementById(type + 'Modal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(type) {
+            document.getElementById(type + 'Modal').classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close modal on outside click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                    document.body.style.overflow = 'auto';
+                }
+            });
+        });
+
+        // Initialize
+        showCookieBanner();
+
+        // Smooth scroll for navigation
+        document.querySelectorAll('nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 3D Card Hover Effect
+        cards.forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 20;
+                const rotateY = (centerX - x) / 20;
+                
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-15px)`;
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)';
+            });
+        });
+    </script>
+</body>
+</html>

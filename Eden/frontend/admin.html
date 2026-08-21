@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eden Admin – Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --teal: #3EC9C0; --teal-dark: #29A89F; --dark: #0A1628; --dark2: #141e33; --white: #F5F9F8; --muted: #8aa4b4; --danger: #E23D28; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--dark); color: var(--white); min-height: 100vh; }
+    
+    /* Header */
+    header { background: var(--dark2); border-bottom: 1px solid rgba(62,201,192,0.25); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 36px; height: 36px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--dark); }
+    .logo-text { font-weight: 700; font-size: 1.2rem; }
+    .logo-text span { display: block; font-size: 0.7rem; color: var(--teal); font-weight: 400; }
+    nav.header-nav { display: flex; gap: 12px; }
+    nav.header-nav a { color: var(--muted); text-decoration: none; padding: 8px 14px; border-radius: 8px; font-size: 0.9rem; transition: all 0.2s; }
+    nav.header-nav a:hover, nav.header-nav a.active { color: var(--white); background: rgba(62,201,192,0.15); }
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .user-avatar { width: 36px; height: 36px; background: var(--teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--dark); font-size: 0.85rem; }
+    .btn-logout { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+    .btn-logout:hover { background: var(--danger); color: white; }
+    
+    /* Layout */
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    
+    h2 { font-size: 1.5rem; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+    .badge { background: var(--teal); color: var(--dark); padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    
+    /* Cards */
+    .card { background: var(--dark2); border: 1px solid rgba(62,201,192,0.2); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-title { font-size: 1.1rem; font-weight: 600; }
+    
+    /* Forms */
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .form-group { flex: 1; min-width: 150px; }
+    .form-group label { display: block; font-size: 0.75rem; color: var(--teal); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .form-input, .form-select { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(62,201,192,0.3); background: var(--dark); color: var(--white); font-size: 0.95rem; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--teal); }
+    .btn { padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+    .btn-primary { background: var(--teal); color: var(--dark); }
+    .btn-primary:hover { background: var(--teal-dark); }
+    .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: white; }
+    
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(62,201,192,0.15); }
+    th { font-size: 0.75rem; color: var(--teal); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; background: rgba(62,201,192,0.08); }
+    td { font-size: 0.9rem; }
+    .actions { display: flex; gap: 8px; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; }
+    .btn-edit { background: rgba(62,201,192,0.2); color: var(--teal); border: none; cursor: pointer; }
+    .btn-del { background: rgba(226,61,40,0.2); color: var(--danger); border: none; cursor: pointer; }
+    
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--dark2); border: 1px solid rgba(62,201,192,0.2); border-radius: 14px; padding: 20px; }
+    .stat-value { font-size: 2.2rem; font-weight: 700; color: var(--teal); }
+    .stat-label { font-size: 0.85rem; color: var(--muted); }
+    
+    /* Tags */
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .tag-admin { background: rgba(226,61,40,0.2); color: #FF7060; }
+    .tag-user { background: rgba(62,201,192,0.2); color: var(--teal); }
+    
+    /* Toast */
+    .toast { position: fixed; top: 20px; right: 20px; background: var(--teal); color: var(--dark); padding: 14px 24px; border-radius: 10px; font-weight: 600; transform: translateY(-100px); transition: transform 0.3s; z-index: 1000; }
+    .toast.show { transform: translateY(0); }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      header { flex-direction: column; gap: 12px; }
+      .form-row { flex-direction: column; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">E</div>
+    <div class="logo-text">Admin<span>Dashboard</span></div>
+  </div>
+  <nav class="header-nav">
+    <a href="#users" class="active" onclick="showPage('users')">Utenti</a>
+    <a href="#courses" onclick="showPage('courses')">Corsi</a>
+    <a href="#closures" onclick="showPage('closures')">Chiusure</a>
+    <a href="index.html">Sito</a>
+  </nav>
+  <div class="user-info">
+    <div class="user-avatar" id="adminAvatar">A</div>
+    <button class="btn-logout" onclick="logout()">Esci</button>
+  </div>
+</header>
+
+<main class="container">
+
+<!-- Users Page -->
+<div id="page-users" class="page active">
+  <h2>Utenti <span class="badge" id="userCount">0</span></h2>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-value" id="statUsers">0</div><div class="stat-label">Totale utenti</div></div>
+    <div class="stat-card"><div class="stat-value" id="statAdmins">0</div><div class="stat-label">Admin</div></div>
+    <div class="stat-card"><div class="stat-value" id="statActive">0</div><div class="stat-label">Attivi</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Aggiungi utente</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nome</label><input type="text" id="newUserName" class="form-input" placeholder="Nome"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="newUserEmail" class="form-input" placeholder="email@esempio.it"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="newUserPass" class="form-input" placeholder="Password"></div>
+      <div class="form-group"><label>Ruolo</label><select id="newUserRole" class="form-select"><option value="user">Utente</option><option value="admin">Admin</option></select></div>
+    </div>
+    <button class="btn btn-primary" onclick="addUser()">Aggiungi utente</button>
+  </div>
+  <div class="card">
+    <table id="usersTable">
+      <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Ruolo</th><th>Creato</th><th>Azioni</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Courses Page -->
+<div id="page-courses" class="page">
+  <h2>Corsi <span class="badge" id="courseCount">0</span></h2>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Aggiungi corso</div></div>
+    <div class="form-row">
+      <div class="form-group"><label>Nome corso</label><input type="text" id="courseName" class="form-input" placeholder="Es. Pilates"></div>
+      <div class="form-group"><label>Categoria</label><select id="courseCat" class="form-select"><option value="Palestra">Palestra</option><option value="Piscina">Piscina</option><option value="Spa">Spa</option></select></div>
+      <div class="form-group"><label>Orario</label><input type="text" id="courseTime" class="form-input" placeholder="09:00"></div>
+    </div>
+    <button class="btn btn-primary" onclick="addCourse()">Aggiungi corso</button>
+  </div>
+  <div class="card">
+    <table id="coursesTable">
+      <thead><tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Orario</th><th>Azioni</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Closures Page -->
+<div id="page-closures" class="page">
+  <h2>Giorni di chiusura <span class="badge" id="closureCount">0</span></h2>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Aggiungi chiusura</div></div>
+    <div class="form-row">
+      <div class="form-group"><label>Data</label><input type="date" id="closeDate" class="form-input"></div>
+      <div class="form-group"><label>Anno</label><input type="number" id="closeYear" class="form-input" value="2026"></div>
+    </div>
+    <button class="btn btn-primary" onclick="addClosure()">Aggiungi chiusura</button>
+  </div>
+  <div class="card">
+    <table id="closuresTable">
+      <thead><tr><th>ID</th><th>Data</th><th>Anno</th><th>Azioni</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<div class="toast" id="toast">Azione completata!</div>
+
+<script>
+const API = '/api';
+let token = localStorage.getItem('eden_token');
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Errore' }));
+    throw new Error(err.error || 'Errore');
+  }
+  return res.json();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.header-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`a[href="#${page}"]`).classList.add('active');
+}
+
+async function init() {
+  if (!token) { location.href = '/login.html'; return; }
+  try {
+    const user = JSON.parse(atob(token.split('.')[1]));
+    document.getElementById('adminAvatar').textContent = user.name?.[0] || 'A';
+  } catch { logout(); }
+  await loadUsers();
+  await loadCourses();
+  await loadClosures();
+}
+
+async function loadUsers() {
+  try {
+    const users = await api('/users');
+    document.getElementById('userCount').textContent = users.length;
+    document.getElementById('statUsers').textContent = users.length;
+    document.getElementById('statAdmins').textContent = users.filter(u => u.role === 'admin').length;
+    document.getElementById('statActive').textContent = users.length;
+    const tbody = document.querySelector('#usersTable tbody');
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td><span class="tag tag-${u.role}">${u.role}</span></td>
+        <td>${new Date(u.created_at).toLocaleDateString('it-IT')}</td>
+        <td class="actions">
+          <button class="btn-sm btn-del" onclick="deleteUser(${u.id})">Elimina</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function addUser() {
+  const name = document.getElementById('newUserName').value.trim();
+  const email = document.getElementById('newUserEmail').value.trim();
+  const password = document.getElementById('newUserPass').value;
+  const role = document.getElementById('newUserRole').value;
+  if (!name || !email || !password) return showToast('Compila tutti i campi');
+  try {
+    await api('/users', { method: 'POST', body: JSON.stringify({ name, email, password, role }) });
+    showToast('Utente aggiunto!');
+    document.getElementById('newUserName').value = '';
+    document.getElementById('newUserEmail').value = '';
+    document.getElementById('newUserPass').value = '';
+    await loadUsers();
+  } catch(e) { showToast(e.message); }
+}
+
+async function deleteUser(id) {
+  if (!confirm('Eliminare utente?')) return;
+  try {
+    await api('/users/' + id, { method: 'DELETE' });
+    showToast('Utente eliminato');
+    await loadUsers();
+  } catch(e) { showToast(e.message); }
+}
+
+async function loadCourses() {
+  try {
+    const courses = await api('/courses');
+    document.getElementById('courseCount').textContent = courses.length;
+    const tbody = document.querySelector('#coursesTable tbody');
+    tbody.innerHTML = courses.map(c => `
+      <tr>
+        <td>${c.id}</td>
+        <td>${c.name}</td>
+        <td>${c.category}</td>
+        <td>${c.time}</td>
+        <td class="actions">
+          <button class="btn-sm btn-del" onclick="deleteCourse(${c.id})">Elimina</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function addCourse() {
+  const name = document.getElementById('courseName').value.trim();
+  const category = document.getElementById('courseCat').value;
+  const time = document.getElementById('courseTime').value.trim();
+  if (!name) return showToast('Inserisci nome corso');
+  try {
+    await api('/courses', { method: 'POST', body: JSON.stringify({ name, category, time }) });
+    showToast('Corso aggiunto!');
+    document.getElementById('courseName').value = '';
+    document.getElementById('courseTime').value = '';
+    await loadCourses();
+  } catch(e) { showToast(e.message); }
+}
+
+async function deleteCourse(id) {
+  if (!confirm('Eliminare corso?')) return;
+  try {
+    await api('/courses/' + id, { method: 'DELETE' });
+    showToast('Corso eliminato');
+    await loadCourses();
+  } catch(e) { showToast(e.message); }
+}
+
+async function loadClosures() {
+  try {
+    const year = document.getElementById('closeYear').value;
+    const closures = await api('/closures?year=' + year);
+    document.getElementById('closureCount').textContent = closures.length;
+    const tbody = document.querySelector('#closuresTable tbody');
+    tbody.innerHTML = closures.map(c => `
+      <tr>
+        <td>${c.id}</td>
+        <td>${new Date(c.date).toLocaleDateString('it-IT')}</td>
+        <td>${c.year}</td>
+        <td class="actions">
+          <button class="btn-sm btn-del" onclick="deleteClosure(${c.id})">Elimina</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function addClosure() {
+  const date = document.getElementById('closeDate').value;
+  const year = parseInt(document.getElementById('closeYear').value);
+  if (!date) return showToast('Seleziona una data');
+  try {
+    await api('/closures', { method: 'POST', body: JSON.stringify({ date, year }) });
+    showToast('Chiusura aggiunta!');
+    document.getElementById('closeDate').value = '';
+    await loadClosures();
+  } catch(e) { showToast(e.message); }
+}
+
+async function deleteClosure(id) {
+  if (!confirm('Eliminare chiusura?')) return;
+  // Note: delete endpoint would need implementation in backend
+  showToast('Funzione non ancora implementata');
+}
+
+function logout() {
+  localStorage.removeItem('eden_token');
+  location.href = '/login.html';
+}
+
+init();
+</script>
+</body>
+</html>

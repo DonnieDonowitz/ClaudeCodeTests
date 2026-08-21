@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eden Fitness & Spa – Il Tempio del Corpo e dell'Anima</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #3EC9C0;
+      --teal-dark: #29A89F;
+      --teal-light: #7EDDD8;
+      --gold: #C9A84C;
+      --gold-light: #E8C97A;
+      --dark: #0A1628;
+      --dark2: #0F1E35;
+      --dark3: #152540;
+      --white: #F5F9F8;
+      --text-muted: #8BA8B5;
+      --red-eden: #E23D28;
+      --font-display: 'Playfair Display', serif;
+      --font-body: 'Outfit', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--dark); color: var(--white); overflow-x: hidden; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--dark); }
+    ::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 3px; }
+    
+    /* Navigation */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 0 48px; height: 76px; background: rgba(10,22,40,0.85); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(62,201,192,0.15); }
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .nav-logo-icon { width: 42px; height: 42px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .nav-logo-icon svg { width: 34px; height: 34px; }
+    .nav-logo-text { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--white); line-height: 1.1; }
+    .nav-logo-text span { display: block; font-size: 0.65rem; font-family: var(--font-body); font-weight: 400; color: var(--teal); letter-spacing: 0.15em; text-transform: uppercase; }
+    .nav-links { display: flex; align-items: center; gap: 36px; list-style: none; }
+    .nav-links a { text-decoration: none; color: rgba(245,249,248,0.75); font-size: 0.9rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; transition: color 0.3s; position: relative; }
+    .nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 2px; background: var(--teal); transform: scaleX(0); transition: transform 0.3s ease; transform-origin: left; }
+    .nav-links a:hover { color: var(--teal); }
+    .nav-links a:hover::after { transform: scaleX(1); }
+    .nav-cta { background: var(--teal); color: var(--dark) !important; padding: 10px 24px; border-radius: 50px; font-weight: 700 !important; }
+    .nav-cta:hover { background: var(--teal-light) !important; transform: translateY(-1px); }
+    .nav-cta::after { display: none !important; }
+    
+    /* Hero Section */
+    #home { min-height: 100vh; position: relative; display: flex; align-items: center; overflow: hidden; }
+    .hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 60% 40%, rgba(62,201,192,0.12) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 10% 80%, rgba(201,168,76,0.08) 0%, transparent 60%), linear-gradient(135deg, #0A1628 0%, #0F1E35 50%, #0D2232 100%); }
+    .hero-content { position: relative; z-index: 2; max-width: 1280px; margin: 0 auto; padding: 120px 48px 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(62,201,192,0.12); border: 1px solid rgba(62,201,192,0.3); border-radius: 50px; padding: 8px 18px; font-size: 0.75rem; font-weight: 600; color: var(--teal); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 28px; }
+    .hero-badge::before { content: ''; width: 7px; height: 7px; background: var(--teal); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.5); } }
+    .hero-title { font-family: var(--font-display); font-size: clamp(3rem, 5vw, 5.5rem); font-weight: 900; line-height: 1.0; margin-bottom: 12px; }
+    .hero-title .line1 { color: var(--white); }
+    .hero-title .line2 { color: var(--teal); font-style: italic; }
+    .hero-title .line3 { color: var(--gold); }
+    .hero-tagline { font-size: 1.05rem; color: rgba(245,249,248,0.65); font-weight: 300; margin-bottom: 40px; line-height: 1.6; max-width: 440px; }
+    .hero-tagline strong { color: var(--gold-light); font-weight: 600; }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--teal); color: var(--dark); padding: 16px 32px; border-radius: 50px; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: all 0.3s; border: none; cursor: pointer; }
+    .btn-primary:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 12px 30px rgba(62,201,192,0.4); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--white); padding: 16px 32px; border-radius: 50px; font-weight: 600; font-size: 0.95rem; text-decoration: none; transition: all 0.3s; border: 1px solid rgba(245,249,248,0.3); cursor: pointer; }
+    .btn-secondary:hover { border-color: var(--teal); color: var(--teal); background: rgba(62,201,192,0.08); }
+    .hero-stats { display: flex; gap: 36px; margin-top: 52px; padding-top: 36px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .stat-item { text-align: left; }
+    .stat-number { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; color: var(--teal); line-height: 1; }
+    .stat-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+    
+    /* Sections */
+    section { padding: 100px 0; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
+    .section-label { font-size: 0.75rem; font-weight: 700; color: var(--teal); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 14px; }
+    .section-title { font-family: var(--font-display); font-size: clamp(2rem, 3.5vw, 3.2rem); font-weight: 700; line-height: 1.15; color: var(--white); margin-bottom: 16px; }
+    .section-title em { font-style: italic; color: var(--teal); }
+    .section-subtitle { font-size: 1rem; color: var(--text-muted); max-width: 560px; line-height: 1.7; }
+    
+    /* Services Grid */
+    #servizi { background: var(--dark2); position: relative; }
+    #servizi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--teal), transparent); }
+    .services-header { text-align: center; margin-bottom: 70px; }
+    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+    .service-card { border-radius: 24px; overflow: hidden; position: relative; height: 420px; cursor: pointer; transition: transform 0.4s ease; }
+    .service-card:hover { transform: translateY(-8px); }
+    .service-gym .service-card-bg { background: linear-gradient(160deg, #1a2a1a 0%, #0d1e0d 100%); }
+    .service-pool .service-card-bg { background: linear-gradient(160deg, #0a1a2e 0%, #051525 100%); }
+    .service-spa .service-card-bg { background: linear-gradient(160deg, #1e1a2e 0%, #120e22 100%); }
+    .service-icon-area { position: absolute; top: 36px; left: 36px; width: 64px; height: 64px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; z-index: 2; }
+    .service-gym .service-icon-area { background: rgba(62,201,192,0.2); }
+    .service-pool .service-icon-area { background: rgba(62,140,201,0.2); }
+    .service-spa .service-icon-area { background: rgba(201,168,76,0.2); }
+    .service-card-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 36px; background: linear-gradient(transparent, rgba(5,10,20,0.97) 60%); z-index: 2; }
+    .service-card-name { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .service-card-desc { font-size: 0.88rem; color: rgba(245,249,248,0.65); line-height: 1.6; margin-bottom: 18px; }
+    .service-tag { display: inline-block; padding: 5px 14px; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+    .service-gym .service-tag { background: rgba(62,201,192,0.2); color: var(--teal); }
+    .service-pool .service-tag { background: rgba(62,140,201,0.2); color: #5AACDB; }
+    .service-spa .service-tag { background: rgba(201,168,76,0.2); color: var(--gold-light); }
+    
+    /* Courses Section */
+    #corsi { background: var(--dark2); }
+    .corsi-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 50px; }
+    .tabs { display: flex; gap: 8px; background: rgba(15,30,53,0.8); border: 1px solid rgba(62,201,192,0.15); border-radius: 50px; padding: 6px; }
+    .tab { padding: 10px 24px; border-radius: 50px; border: none; background: transparent; color: var(--text-muted); font-family: var(--font-body); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .tab.active { background: var(--teal); color: var(--dark); }
+    .tab:hover:not(.active) { color: var(--white); }
+    .timetable-wrap { overflow-x: auto; border-radius: 20px; border: 1px solid rgba(62,201,192,0.15); }
+    .timetable { width: 100%; border-collapse: collapse; min-width: 780px; }
+    .timetable th { background: rgba(62,201,192,0.12); padding: 16px 12px; text-align: center; font-size: 0.78rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid rgba(62,201,192,0.15); }
+    .timetable td { padding: 10px 8px; text-align: center; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.04); }
+    .corso-pill { display: inline-block; padding: 5px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .pill-green { background: rgba(62,201,192,0.2); color: var(--teal); }
+    .pill-blue { background: rgba(62,140,201,0.2); color: #80B8F0; }
+    .pill-purple { background: rgba(160,100,220,0.2); color: #C090E0; }
+    .pill-pink { background: rgba(255,120,140,0.2); color: #FF8FA0; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    
+    /* Subscriptions */
+    #abbonamenti { background: var(--dark); }
+    .abbonamenti-header { text-align: center; margin-bottom: 60px; }
+    .toggle-wrap { display: inline-flex; align-items: center; gap: 14px; background: rgba(15,30,53,0.8); border: 1px solid rgba(62,201,192,0.15); border-radius: 50px; padding: 8px 20px; margin-top: 24px; }
+    .toggle-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+    .toggle-label.active { color: var(--teal); font-weight: 700; }
+    .toggle { width: 48px; height: 26px; background: rgba(62,201,192,0.3); border-radius: 50px; position: relative; cursor: pointer; transition: background 0.3s; }
+    .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: var(--teal); border-radius: 50%; transition: transform 0.3s; }
+    .toggle.on::after { transform: translateX(22px); }
+    .plans-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .plan-card { border-radius: 24px; padding: 32px 24px; border: 1px solid rgba(62,201,192,0.12); background: rgba(15,30,53,0.5); transition: transform 0.3s; }
+    .plan-card:hover { transform: translateY(-6px); }
+    .plan-card.featured { background: linear-gradient(145deg, rgba(62,201,192,0.15), rgba(15,30,53,0.95)); border-color: rgba(62,201,192,0.4); transform: translateY(-12px); }
+    .plan-card.gold-card { background: linear-gradient(145deg, rgba(201,168,76,0.12), rgba(15,30,53,0.95)); border-color: rgba(201,168,76,0.3); }
+    .plan-popular { position: absolute; top: 16px; right: -28px; background: var(--teal); color: var(--dark); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 40px; transform: rotate(35deg); }
+    .plan-name { font-size: 0.7rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 10px; }
+    .plan-card.gold-card .plan-name { color: var(--gold-light); }
+    .plan-price { font-family: var(--font-display); font-size: 3rem; font-weight: 900; color: var(--white); line-height: 1; }
+    .plan-price sup { font-size: 1.2rem; font-weight: 700; vertical-align: super; color: var(--teal); }
+    .plan-card.gold-card .plan-price sup { color: var(--gold-light); }
+    .plan-period { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 18px; }
+    .plan-desc { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .plan-features li { display: flex; align-items: center; gap: 10px; font-size: 0.83rem; color: rgba(245,249,248,0.8); }
+    .plan-features li .check { width: 18px; height: 18px; border-radius: 50%; background: rgba(62,201,192,0.2); color: var(--teal); display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; flex-shrink: 0; font-weight: 900; }
+    .plan-features li .cross { width: 18px; height: 18px; border-radius: 50%; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0; }
+    .btn-plan { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid rgba(62,201,192,0.3); background: transparent; color: var(--teal); font-family: var(--font-body); font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+    .btn-plan:hover { background: rgba(62,201,192,0.15); }
+    .btn-plan.primary { background: var(--teal); color: var(--dark); border-color: var(--teal); }
+    .btn-plan.primary:hover { background: var(--teal-light); }
+    .save-badge { background: rgba(201,168,76,0.2); color: var(--gold-light); padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    
+    /* Footer */
+    footer { background: rgba(5,12,25,0.98); border-top: 1px solid rgba(62,201,192,0.1); padding: 50px 0 30px; }
+    .footer-inner { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+    .footer-col h5 { font-size: 0.75rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 18px; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-col ul li a { text-decoration: none; color: var(--text-muted); font-size: 0.85rem; transition: color 0.3s; }
+    .footer-col ul li a:hover { color: var(--teal); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .footer-bottom p { font-size: 0.78rem; color: rgba(139,168,181,0.6); }
+    .social-links { display: flex; gap: 12px; }
+    .social-link { width: 38px; height: 38px; border-radius: 10px; background: rgba(62,201,192,0.1); border: 1px solid rgba(62,201,192,0.2); display: flex; align-items: center; justify-content: center; color: var(--teal); text-decoration: none; font-size: 16px; transition: all 0.3s; }
+    .social-link:hover { background: rgba(62,201,192,0.2); transform: translateY(-2px); }
+    
+    /* Scroll Top */
+    .scroll-top { position: fixed; bottom: 30px; right: 30px; width: 48px; height: 48px; background: var(--teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999; font-size: 18px; color: var(--dark); transition: all 0.3s; box-shadow: 0 4px 20px rgba(62,201,192,0.4); }
+    .scroll-top:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(62,201,192,0.5); }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-content { grid-template-columns: 1fr; text-align: center; }
+      .nav-links { display: none; }
+      .services-grid { grid-template-columns: 1fr; }
+      .plans-grid { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cookie Banner GDPR -->
+<div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark2);border-top:1px solid var(--teal);padding:20px;z-index:2000;">
+  <div style="max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:280px;">
+      <h4 style="color:var(--teal);margin:0 0 8px;">🍪 Cookie & Privacy</h4>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin:0;line-height:1.5;">
+        Utilizziamo cookie tecnici e, previo consenso, cookie analitici per migliorare l'esperienza. 
+        <a href="#privacy" style="color:var(--teal);">Privacy Policy</a> · 
+        <a href="#privacy" style="color:var(--teal);">Cookie Policy</a>
+      </p>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <button onclick="setCookieConsent(false)" class="btn-secondary" style="padding:10px 20px;font-size:0.85rem;">Rifiuta</button>
+      <button onclick="setCookieConsent(true)" class="btn-primary" style="padding:10px 20px;font-size:0.85rem;">Accetta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nav -->
+<nav>
+  <a href="#home" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="40" fill="white"/>
+        <path d="M40 15 C40 15 22 34 22 46 C22 56 30 64 40 64 C50 64 58 56 58 46 C58 34 40 15 40 15Z" fill="#3EC9C0" opacity="0.85"/>
+        <circle cx="40" cy="28" r="7" fill="#29A89F"/>
+        <path d="M30 48 Q40 38 50 48" stroke="#29A89F" stroke-width="3" fill="none"/>
+      </svg>
+    </div>
+    <div class="nav-logo-text">Eden Fitness&Spa<span>Fano · Il Tempio del Benessere</span></div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#home">Home</a></li>
+    <li><a href="#servizi">Servizi</a></li>
+    <li><a href="#corsi">Corsi</a></li>
+    <li><a href="#abbonamenti">Abbonamenti</a></li>
+    <li><a href="#contatti">Contatti</a></li>
+    <li><a href="/admin.html" class="nav-cta">Admin</a></li>
+    <li><a href="/user.html" class="nav-cta">Area Utente</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div>
+      <div class="hero-badge fade-in"><span>Palestra · Piscina · Spa</span></div>
+      <h1 class="hero-title fade-in delay-1">
+        <span class="line1">Cedi alla</span><br>
+        <span class="line2">tentazione</span><br>
+        <span class="line3">del benessere.</span>
+      </h1>
+      <p class="hero-tagline fade-in delay-2">
+        Nel cuore di Fano, un luogo dove <strong>corpo e mente si incontrano</strong>. Palestra all'avanguardia, piscina rigenerante e spa esclusiva. Il tuo Eden ti aspetta.
+      </p>
+      <div class="hero-actions fade-in delay-3">
+        <a href="#abbonamenti" class="btn-primary">Inizia ora</a>
+        <a href="#corsi" class="btn-secondary">Scopri i corsi →</a>
+      </div>
+      <div class="hero-stats fade-in delay-4">
+        <div class="stat-item"><div class="stat-number">1726</div><div class="stat-label">Follower</div></div>
+        <div class="stat-item"><div class="stat-number">3</div><div class="stat-label">Strutture</div></div>
+        <div class="stat-item"><div class="stat-number">20+</div><div class="stat-label">Corsi/sett.</div></div>
+        <div class="stat-item"><div class="stat-number">∞</div><div class="stat-label">Benessere</div></div>
+      </div>
+    </div>
+    <div class="hero-visual fade-in delay-2">
+      <div style="width:360px;height:440px;border-radius:24px;background:linear-gradient(145deg,rgba(62,201,192,0.15),rgba(10,30,50,0.98));border:1px solid rgba(62,201,192,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <div style="width:280px;height:280px;display:flex;align-items:center;justify-content:center;">
+          <svg width="280" height="280" viewBox="0 0 280 280">
+            <rect x="40" y="140" width="200" height="120" rx="4" fill="rgba(62,201,192,0.08)" stroke="rgba(62,201,192,0.3)" stroke-width="1"/>
+            <rect x="60" y="120" width="160" height="30" rx="2" fill="rgba(62,201,192,0.12)" stroke="rgba(62,201,192,0.2)" stroke-width="1"/>
+            <text x="140" y="108" text-anchor="middle" font-family="Playfair Display,serif" font-size="20" fill="rgba(62,201,192,0.8)" font-weight="bold">EDEN</text>
+            <text x="140" y="126" text-anchor="middle" font-family="Outfit,sans-serif" font-size="9" fill="rgba(62,201,192,0.5)" letter-spacing="3">FITNESS &amp; SPA</text>
+            <ellipse cx="140" cy="262" rx="100" ry="8" fill="rgba(62,201,192,0.12)"/>
+          </svg>
+        </div>
+        <div style="padding:24px;width:100%;">
+          <div style="color:var(--teal);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Fano, Pesaro-Urbino</div>
+          <div style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;">È tutto qui</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Servizi -->
+<section id="servizi">
+  <div class="container">
+    <div class="services-header">
+      <div class="section-label">I nostri servizi</div>
+      <h2 class="section-title">Un equilibrio perfetto tra <em>corpo e mente</em></h2>
+      <p class="section-subtitle" style="margin:0 auto;text-align:center;">Tre ambienti d'eccellenza sotto lo stesso tetto.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card service-gym">
+        <div class="service-card-bg"></div>
+        <div class="service-icon-area">🏋️</div>
+        <div class="service-card-content">
+          <div class="service-card-name">Palestra</div>
+          <div class="service-card-desc">Attrezzature all'avanguardia, spazi ampi e istruttori qualificati.</div>
+          <span class="service-tag">Sala pesi · Cardio · Functional</span>
+        </div>
+      </div>
+      <div class="service-card service-pool">
+        <div class="service-card-bg"></div>
+        <div class="service-icon-area">🏊</div>
+        <div class="service-card-content">
+          <div class="service-card-name">Piscina</div>
+          <div class="service-card-desc">Nuota in un ambiente tranquillo con luci cromoterapiche.</div>
+          <span class="service-tag">Aquagym · Nuoto · Corsi bimbi</span>
+        </div>
+      </div>
+      <div class="service-card service-spa">
+        <div class="service-card-bg"></div>
+        <div class="service-icon-area">🌿</div>
+        <div class="service-card-content">
+          <div class="service-card-name">Spa</div>
+          <div class="service-card-desc">Trattamenti rigeneranti per corpo e mente.</div>
+          <span class="service-tag">Sauna · Massaggi · Idromassaggio</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Corsi -->
+<section id="corsi">
+  <div class="container">
+    <div class="corsi-header">
+      <div>
+        <div class="section-label">I nostri corsi</div>
+        <h2 class="section-title">Trova il tuo <em>ritmo</em></h2>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('fitness',this)">Sala Fitness</button>
+        <button class="tab" onclick="switchTab('piscina',this)">Piscina</button>
+      </div>
+    </div>
+    <div id="tab-fitness" class="tab-pane active">
+      <div class="timetable-wrap">
+        <table class="timetable">
+          <thead><tr><th>Orario</th><th>Lunedì</th><th>Martedì</th><th>Mercoledì</th><th>Giovedì</th><th>Venerdì</th><th>Sabato</th></tr></thead>
+          <tbody>
+            <tr><td>09:00</td><td><span class="corso-pill pill-green">Pilates</span></td><td><span class="corso-pill pill-purple">Medical</span></td><td><span class="corso-pill pill-green">Pilates</span></td><td><span class="corso-pill pill-purple">Medical</span></td><td><span class="corso-pill pill-pink">Posturale</span></td><td></td></tr>
+            <tr><td>18:20</td><td><span class="corso-pill pill-blue">TRX</span></td><td><span class="corso-pill pill-pink">GAG</span></td><td><span class="corso-pill pill-purple">Total Body</span></td><td><span class="corso-pill pill-pink">GAG</span></td><td><span class="corso-pill pill-purple">Funzionale</span></td><td></td></tr>
+            <tr><td>19:10</td><td><span class="corso-pill pill-purple">Funzionale</span></td><td><span class="corso-pill pill-purple">Total Body</span></td><td><span class="corso-pill pill-purple">Funzionale</span></td><td><span class="corso-pill pill-blue">TRX</span></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="tab-piscina" class="tab-pane">
+      <div class="timetable-wrap">
+        <table class="timetable">
+          <thead><tr><th>Orario</th><th>Lunedì</th><th>Martedì</th><th>Mercoledì</th><th>Giovedì</th><th>Venerdì</th><th>Sabato</th></tr></thead>
+          <tbody>
+            <tr><td>09:00</td><td><span class="corso-pill pill-blue">Acquagym</span></td><td><span class="corso-pill pill-purple">Acquabike</span></td><td><span class="corso-pill pill-blue">Acquagym</span></td><td><span class="corso-pill pill-purple">Acquabike</span></td><td><span class="corso-pill pill-blue">Acquagym</span></td><td></td></tr>
+            <tr><td>18:20</td><td><span class="corso-pill pill-purple">Acquabike</span></td><td><span class="corso-pill pill-blue">Acquagym</span></td><td><span class="corso-pill pill-purple">Acquabike</span></td><td><span class="corso-pill pill-blue">Acquagym</span></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Abbonamenti -->
+<section id="abbonamenti">
+  <div class="container">
+    <div class="abbonamenti-header">
+      <div class="section-label">I nostri abbonamenti</div>
+      <h2 class="section-title">Scegli il tuo piano <em>Eden</em></h2>
+      <p class="section-subtitle" style="margin:0 auto;text-align:center;margin-bottom:20px;">Nessun costo nascosto.</p>
+      <div class="toggle-wrap" id="billingToggle" onclick="toggleBilling()">
+        <span class="toggle-label active" id="lblMensile">Mensile</span>
+        <div class="toggle" id="billingSwitch"></div>
+        <span class="toggle-label" id="lblAnnuale">Annuale</span>
+        <span class="save-badge">Risparmia fino a 121€!</span>
+      </div>
+    </div>
+    <div class="plans-grid">
+      <div class="plan-card">
+        <div class="plan-name">Palestra</div>
+        <div class="plan-price"><sup>€</sup><span class="price-val" data-mensile="60" data-annuale="50">60</span></div>
+        <div class="plan-period" id="period-1">/mese</div>
+        <div class="plan-desc">Accesso completo alla palestra.</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span><span>Sala pesi illimitata</span></li>
+          <li><span class="check">✓</span><span>Area cardio</span></li>
+          <li><span class="cross">✗</span><span>Accesso piscina</span></li>
+          <li><span class="cross">✗</span><span>Accesso Spa</span></li>
+        </ul>
+        <button class="btn-plan" onclick="location.href='/user.html'">Scegli</button>
+      </div>
+      <div class="plan-card featured">
+        <div class="plan-popular">Più scelto</div>
+        <div class="plan-name">Palestra + Corsi</div>
+        <div class="plan-price"><sup>€</sup><span class="price-val" data-mensile="75" data-annuale="62">75</span></div>
+        <div class="plan-period" id="period-2">/mese</div>
+        <div class="plan-desc">Palestra + corsi illimitati.</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span><span>Tutto del piano Palestra</span></li>
+          <li><span class="check">✓</span><span>Tutti i corsi fitness</span></li>
+          <li><span class="cross">✗</span><span>Accesso piscina</span></li>
+          <li><span class="cross">✗</span><span>Accesso Spa</span></li>
+        </ul>
+        <button class="btn-plan primary" onclick="location.href='/user.html'">Inizia</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Full Access</div>
+        <div class="plan-price"><sup>€</sup><span class="price-val" data-mensile="95" data-annuale="79">95</span></div>
+        <div class="plan-period" id="period-3">/mese</div>
+        <div class="plan-desc">Palestra + corsi + piscina.</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span><span>Accesso piscina</span></li>
+          <li><span class="check">✓</span><span>Corsi acqua</span></li>
+          <li><span class="cross">✗</span><span>Accesso Spa</span></li>
+        </ul>
+        <button class="btn-plan" onclick="location.href='/user.html'">Scegli</button>
+      </div>
+      <div class="plan-card gold-card">
+        <div class="plan-name">Eden Total ✨</div>
+        <div class="plan-price" style="color:var(--gold-light);"><sup style="color:var(--gold-light);">€</sup><span class="price-val" data-mensile="120" data-annuale="99">120</span></div>
+        <div class="plan-period" id="period-4">/mese</div>
+        <div class="plan-desc">Esperienza completa.</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span><span>Tutto del Full Access</span></li>
+          <li><span class="check">✓</span><span>Spa illimitata</span></li>
+          <li><span class="check">✓</span><span>2 trattamenti/mese</span></li>
+        </ul>
+        <button class="btn-plan gold-btn" onclick="location.href='/user.html'">Scegli</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer id="contatti">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="nav-logo" style="text-decoration:none;">
+          <div class="nav-logo-icon">
+            <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" width="34" height="34">
+              <circle cx="40" cy="40" r="40" fill="white"/>
+              <path d="M40 15 C40 15 22 34 22 46 C22 56 30 64 40 64 C50 64 58 56 58 46 C58 34 40 15 40 15Z" fill="#3EC9C0" opacity="0.85"/>
+              <circle cx="40" cy="28" r="7" fill="#29A89F"/>
+            </svg>
+          </div>
+          <div class="nav-logo-text">Eden Fitness&Spa<span>Il Tempio del Corpo e dell'Anima</span></div>
+        </div>
+        <p>La tua oasi di benessere nel cuore di Fano.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Navigazione</h5>
+        <ul>
+          <li><a href="#home">Home</a></li>
+          <li><a href="#servizi">Servizi</a></li>
+          <li><a href="#corsi">Corsi</a></li>
+          <li><a href="#abbonamenti">Abbonamenti</a></li>
+          <li><a href="#contatti">Contatti</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Info</h5>
+        <ul>
+          <li><a href="#privacy">Privacy Policy</a></li>
+          <li><a href="#privacy">Cookie Policy</a></li>
+          <li><a href="#privacy">Termini di servizio</a></li>
+          <li><a href="#privacy">GDPR</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Contatti</h5>
+        <ul>
+          <li>Eden Fitness & Spa</li>
+          <li>Fano (PU)</li>
+          <li>0721 825595</li>
+          <li>eden@fitness.it</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Eden Fitness & Spa — P.IVA 000000000</p>
+      <div class="social-links">
+        <a href="#" class="social-link" title="Facebook">f</a>
+        <a href="#" class="social-link" title="Instagram">ig</a>
+        <a href="#" class="social-link" title="WhatsApp">w</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<script>
+// Tab switching
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Billing toggle
+let isAnnuale = false;
+function toggleBilling() {
+  isAnnuale = !isAnnuale;
+  const toggle = document.getElementById('billingSwitch');
+  toggle.classList.toggle('on', isAnnuale);
+  document.getElementById('lblMensile').classList.toggle('active', !isAnnuale);
+  document.getElementById('lblAnnuale').classList.toggle('active', isAnnuale);
+  document.querySelectorAll('.price-val').forEach(el => {
+    el.textContent = isAnnuale ? el.dataset.annuale : el.mensile;
+  });
+}
+
+// GDPR Cookie Consent
+function setCookieConsent(accept) {
+  const d = new Date();
+  d.setTime(d.getTime() + (365*24*60*60*1000));
+  document.cookie = 'gdpr_consent=' + (accept ? 'true' : 'false') + ';expires=' + d.toUTCString() + ';path=/';
+  document.getElementById('cookieBanner').style.display = 'none';
+  if (accept) fetch('/api/cookie-consent', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ consent: true }) });
+}
+
+function checkCookieConsent() {
+  if (document.cookie.indexOf('gdpr_consent=') === -1) {
+    document.getElementById('cookieBanner').style.display = 'block';
+  }
+}
+
+// Scroll to top visibility
+window.addEventListener('scroll', () => {
+  const st = document.querySelector('.scroll-top');
+  st.style.opacity = window.scrollY > 400 ? '1' : '0.3';
+});
+
+// Nav active state
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  sections.forEach(sec => { if (window.scrollY >= sec.offsetTop - 100) cur = sec.getAttribute('id'); });
+  navLinks.forEach(a => { if (a.getAttribute('href') === '#' + cur) a.style.color = 'var(--teal)'; });
+});
+
+// Init
+checkCookieConsent();
+</script>
+</body>
+</html>
