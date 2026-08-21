@@ -1,0 +1,2 @@
+# Impedisce la navigazione/elenco del contenuto di questa cartella su hosting Apache (Hostinger).
+Options -Indexes

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /ebook-download-9f3a7b/
+Disallow: /thankyou.html

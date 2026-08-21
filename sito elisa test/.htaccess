@@ -1,0 +1,26 @@
+# Ottimizzazioni base per hosting Apache (Hostinger) — sito statico Elisa Fit
+
+# Compressione GZIP
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript text/javascript application/json image/svg+xml
+</IfModule>
+
+# Cache lato browser per gli asset statici
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType application/pdf "access plus 1 day"
+</IfModule>
+
+# Forza HTTPS (attivalo dopo aver installato il certificato SSL gratuito su Hostinger)
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteCond %{HTTPS} off
+#   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+ErrorDocument 404 /index.html

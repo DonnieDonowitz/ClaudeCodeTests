@@ -1,0 +1,13 @@
+Metti qui dentro il file reale dell'ebook, con nome esatto:
+
+trasformazione-totale.pdf
+
+Il nome del file e il nome di questa cartella (volutamente "random") NON sono un sistema di sicurezza vero e proprio,
+ma servono solo a evitare che il link venga trovato per caso o indicizzato da Google.
+Per una protezione seria valuta le opzioni descritte nel README.md principale (automazione via email,
+oppure link con token generato da Zapier/Make ad ogni acquisto).
+
+Ricorda di:
+1. Sostituire questo placeholder con il PDF reale prima di andare online.
+2. Caricare lo stesso PDF anche nello step "allegato" della automazione email (Zapier/Make) descritta nel README.
+3. Rimuovere il link a questa cartella da qualunque sitemap o menu pubblico (non è mai linkata dal sito, lasciala così).
