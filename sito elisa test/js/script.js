@@ -82,14 +82,14 @@
     });
   }
 
-  /* ---------------- Parallax leggero sul visual dell'hero ---------------- */
-  const tiltWrap = $(".tilt-wrap");
+  /* ---------------- Parallax leggero sulla fascia editoriale dell'hero ---------------- */
+  const heroBand = $("#hero-band");
   function updateHeroParallax() {
-    if (!tiltWrap || !hero || prefersReducedMotion) return;
+    if (!heroBand || !hero || prefersReducedMotion) return;
     const rect = hero.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) return;
     const progress = Math.min(1, Math.max(0, -rect.top / (rect.height || 1)));
-    tiltWrap.style.transform = `translateY(${progress * 46}px)`;
+    heroBand.style.transform = `translateY(${progress * -28}px) scale(${1 + progress * 0.04})`;
   }
 
   let ticking = false;
@@ -202,7 +202,7 @@
       });
     });
   }
-  initTilt(".book-3d", 6);
+  initTilt(".price-card", 4);
 
   /* ---------------- Testimonial slider ---------------- */
   const track = $("#testi-track");
@@ -235,6 +235,36 @@
     window.addEventListener("resize", () => { index = 0; render(); if (dotsWrap) { dotsWrap.innerHTML = ""; for (let i = 0; i <= maxIndex(); i++) { const b = document.createElement("button"); b.addEventListener("click", () => { index = i; render(); resetAutoplay(); }); dotsWrap.appendChild(b); } render(); } });
     render();
     resetAutoplay();
+  }
+
+  /* ---------------- Mini testimonianza rotante nella card prezzo ---------------- */
+  const miniTesti = $("#mini-testi");
+  if (miniTesti) {
+    const miniItems = $$(".mini-testi-item", miniTesti);
+    const miniDotsWrap = $("#mini-testi-dots");
+    let miniIndex = 0;
+
+    if (miniDotsWrap) {
+      miniItems.forEach((_, i) => {
+        const b = document.createElement("button");
+        if (i === 0) b.classList.add("active");
+        b.addEventListener("click", () => { showMiniTesti(i); resetMiniAutoplay(); });
+        miniDotsWrap.appendChild(b);
+      });
+    }
+
+    function showMiniTesti(i) {
+      miniIndex = i;
+      miniItems.forEach((el, idx) => el.classList.toggle("active", idx === i));
+      if (miniDotsWrap) $$("button", miniDotsWrap).forEach((d, idx) => d.classList.toggle("active", idx === i));
+    }
+
+    let miniAutoplay;
+    function resetMiniAutoplay() {
+      clearInterval(miniAutoplay);
+      miniAutoplay = setInterval(() => showMiniTesti((miniIndex + 1) % miniItems.length), 4200);
+    }
+    if (miniItems.length > 1) resetMiniAutoplay();
   }
 
   /* ---------------- FAQ accordion ---------------- */

@@ -72,7 +72,10 @@
 <!-- ================= HERO ================= -->
 <section class="hero" id="top">
   <div class="container hero-grid">
-    <div class="hero-copy">
+    <div class="hero-tag reveal">
+      <p>Il metodo che uso ogni giorno con i miei clienti privati, per la prima volta in un unico ebook.</p>
+    </div>
+    <div class="hero-main reveal">
       <span class="eyebrow">Guida digitale · Personal Trainer Elisa</span>
       <h1>Trasforma il tuo corpo con il metodo di <span class="text-grad">Elisa</span>, senza palestra e senza confusione.</h1>
       <p class="hero-sub">L'ebook che racchiude schede di allenamento, piani alimentari e strategia mentale che uso ogni giorno con i miei clienti privati. Tutto in un unico PDF, pronto da seguire da oggi stesso.</p>
@@ -86,29 +89,18 @@
         <div class="hero-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg> Garanzia soddisfatti o rimborsati 14gg</div>
       </div>
     </div>
-
-    <div class="tilt-wrap">
-      <div class="book-3d">
-        <div class="book-spine"></div>
-        <div class="book-cover">
-          <span class="eyebrow tag">EBOOK · PDF</span>
-          <div>
-            <h4>Trasformazione<br>Totale</h4>
-            <p class="author">by Elisa — Personal Trainer</p>
-          </div>
-        </div>
-        <div class="float-chip chip-1"><span class="chip-dot"></span>+120 pagine</div>
-        <div class="float-chip chip-2"><span class="chip-dot"></span>Piani allenamento</div>
-        <div class="float-chip chip-3"><span class="chip-dot"></span>Guida alimentare</div>
-      </div>
-    </div>
   </div>
 
   <div class="scroll-cue"><span>SCORRI</span><span class="line"></span></div>
 
-  <svg class="wave-divider" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0,32 C240,80 480,0 720,24 C960,48 1200,88 1440,40 L1440,80 L0,80 Z"></path>
-  </svg>
+  <div class="hero-band reveal-scale" id="hero-band">
+    <div class="hero-band-bg"></div>
+    <div class="hero-band-chips">
+      <div class="float-chip chip-1"><span class="chip-dot"></span>+120 pagine</div>
+      <div class="float-chip chip-2"><span class="chip-dot"></span>Guida alimentare inclusa</div>
+      <div class="float-chip chip-3"><span class="chip-dot"></span>Piani da 12 settimane</div>
+    </div>
+  </div>
 </section>
 
 <!-- ================= TRUST STRIP ================= -->
@@ -267,35 +259,60 @@
     <div class="pricing-wrap">
       <div class="price-card reveal-scale">
         <span class="ribbon">-46%</span>
-        <div class="price-head">
-          <span class="price-old">49,90€</span>
-          <span class="price-new">27<sup>,00€</sup></span>
+
+        <div class="price-col price-col-left">
+          <div class="price-head">
+            <span class="price-old">49,90€</span>
+            <span class="price-new">27<sup>,00€</sup></span>
+          </div>
+          <p class="price-note">Pagamento unico · Nessun abbonamento · IVA inclusa dove applicabile</p>
+
+          <div class="countdown">
+            <div class="cd-box"><div class="n" id="cd-h">00</div><div class="l">Ore</div></div>
+            <div class="cd-box"><div class="n" id="cd-m">00</div><div class="l">Min</div></div>
+            <div class="cd-box"><div class="n" id="cd-s">00</div><div class="l">Sec</div></div>
+          </div>
+
+          <div class="consent-row">
+            <input type="checkbox" id="consent-checkbox">
+            <label for="consent-checkbox">Accetto i <a href="termini.html" target="_blank">Termini di vendita</a> e la <a href="privacy.html" target="_blank">Privacy Policy</a> e, trattandosi di contenuto digitale, richiedo l'esecuzione immediata rinunciando al diritto di recesso di 14 giorni previsto per gli acquisti online (resta valida la garanzia soddisfatti o rimborsati sopra indicata).</label>
+          </div>
+
+          <div id="paypal-button-container"></div>
+
+          <div class="pay-guarantee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Pagamento crittografato tramite PayPal · Nessun dato carta salvato su questo sito</div>
+          <div class="pay-icons">PAYPAL · CARTE DI CREDITO/DEBITO</div>
         </div>
-        <p class="price-note">Pagamento unico · Nessun abbonamento · IVA inclusa dove applicabile</p>
 
-        <div class="countdown">
-          <div class="cd-box"><div class="n" id="cd-h">00</div><div class="l">Ore</div></div>
-          <div class="cd-box"><div class="n" id="cd-m">00</div><div class="l">Min</div></div>
-          <div class="cd-box"><div class="n" id="cd-s">00</div><div class="l">Sec</div></div>
+        <div class="price-col price-col-right">
+          <h4>Cosa include la guida</h4>
+          <ul class="price-features">
+            <li>Ebook PDF completo (120+ pagine)</li>
+            <li>Schede di allenamento a 12 settimane</li>
+            <li>Guida nutrizionale flessibile</li>
+            <li>Link di download sicuro via email in pochi minuti</li>
+            <li>Garanzia soddisfatti o rimborsati 14 giorni</li>
+          </ul>
+
+          <div class="mini-testi" id="mini-testi">
+            <div class="mini-testi-item active">
+              <div class="mini-testi-stars">★★★★★</div>
+              <p class="mini-testi-quote">"Acquistato la sera, ricevuto tutto subito via email. Il giorno dopo ero già in palestra con la prima scheda."</p>
+              <div class="mini-testi-person"><div class="mini-testi-avatar">L</div><div><div class="mini-testi-name">Luca P.</div><div class="mini-testi-role">Cliente da 2 mesi</div></div></div>
+            </div>
+            <div class="mini-testi-item">
+              <div class="mini-testi-stars">★★★★★</div>
+              <p class="mini-testi-quote">"Strutturato come un vero percorso da personal trainer. Vale molto più del prezzo."</p>
+              <div class="mini-testi-person"><div class="mini-testi-avatar">M</div><div><div class="mini-testi-name">Marco T.</div><div class="mini-testi-role">Cliente da 3 mesi</div></div></div>
+            </div>
+            <div class="mini-testi-item">
+              <div class="mini-testi-stars">★★★★★</div>
+              <p class="mini-testi-quote">"La parte sull'alimentazione flessibile mi ha cambiato la vita. Niente più diete impossibili."</p>
+              <div class="mini-testi-person"><div class="mini-testi-avatar">S</div><div><div class="mini-testi-name">Sara L.</div><div class="mini-testi-role">Cliente da 1 anno</div></div></div>
+            </div>
+            <div class="mini-testi-dots" id="mini-testi-dots"></div>
+          </div>
         </div>
-
-        <ul class="price-features">
-          <li>Ebook PDF completo (120+ pagine)</li>
-          <li>Schede di allenamento a 12 settimane</li>
-          <li>Guida nutrizionale flessibile</li>
-          <li>Link di download sicuro via email in pochi minuti</li>
-          <li>Garanzia soddisfatti o rimborsati 14 giorni</li>
-        </ul>
-
-        <div class="consent-row">
-          <input type="checkbox" id="consent-checkbox">
-          <label for="consent-checkbox">Accetto i <a href="termini.html" target="_blank">Termini di vendita</a> e la <a href="privacy.html" target="_blank">Privacy Policy</a> e, trattandosi di contenuto digitale, richiedo l'esecuzione immediata rinunciando al diritto di recesso di 14 giorni previsto per gli acquisti online (resta valida la garanzia soddisfatti o rimborsati sopra indicata).</label>
-        </div>
-
-        <div id="paypal-button-container"></div>
-
-        <div class="pay-guarantee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Pagamento crittografato tramite PayPal · Nessun dato carta salvato su questo sito</div>
-        <div class="pay-icons">PAYPAL · CARTE DI CREDITO/DEBITO</div>
       </div>
     </div>
   </div>
