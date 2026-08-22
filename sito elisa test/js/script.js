@@ -204,37 +204,15 @@
   }
   initTilt(".price-card", 4);
 
-  /* ---------------- Testimonial slider ---------------- */
-  const track = $("#testi-track");
-  const dotsWrap = $("#testi-dots");
-  if (track) {
-    const slides = $$(".testi-card", track);
-    const perView = () => (window.innerWidth >= 800 ? 3 : 1);
-    let index = 0;
-    let autoplay;
-
-    function maxIndex() { return Math.max(0, slides.length - perView()); }
-    function render() {
-      const pct = (100 / perView()) * Math.min(index, maxIndex());
-      track.style.transform = `translateX(-${pct}%)`;
-      if (dotsWrap) $$("button", dotsWrap).forEach((d, i) => d.classList.toggle("active", i === index));
-    }
-    if (dotsWrap) {
-      dotsWrap.innerHTML = "";
-      for (let i = 0; i <= maxIndex(); i++) {
-        const b = document.createElement("button");
-        b.addEventListener("click", () => { index = i; render(); resetAutoplay(); });
-        dotsWrap.appendChild(b);
-      }
-    }
-    function next() { index = index >= maxIndex() ? 0 : index + 1; render(); }
-    function resetAutoplay() {
-      clearInterval(autoplay);
-      autoplay = setInterval(next, 4500);
-    }
-    window.addEventListener("resize", () => { index = 0; render(); if (dotsWrap) { dotsWrap.innerHTML = ""; for (let i = 0; i <= maxIndex(); i++) { const b = document.createElement("button"); b.addEventListener("click", () => { index = i; render(); resetAutoplay(); }); dotsWrap.appendChild(b); } render(); } });
-    render();
-    resetAutoplay();
+  /* ---------------- Magic card: spotlight che segue il cursore ---------------- */
+  if (!prefersReducedMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    $$(".magic-card").forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", e.clientX - r.left + "px");
+        card.style.setProperty("--my", e.clientY - r.top + "px");
+      });
+    });
   }
 
   /* ---------------- Mini testimonianza rotante nella card prezzo ---------------- */
