@@ -107,9 +107,9 @@ h3{ font-size:1.35rem; }
   border-bottom:1px solid var(--card-border);
 }
 .nav-inner{ display:flex; align-items:center; justify-content:space-between; }
-.logo{ font-family:var(--serif); font-weight:600; font-size:1.4rem; display:flex; align-items:center; gap:10px; }
-.logo span{ color:var(--accent); }
-.logo .dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); }
+.logo{ display:flex; align-items:center; }
+.logo-mark{ display:block; width:38px; height:38px; transition:transform .3s var(--ease); }
+.logo:hover .logo-mark{ transform:scale(1.06); }
 .nav-links{ display:flex; gap:36px; align-items:center; }
 .nav-links a{ font-size:.9rem; font-weight:600; color:var(--text-dim); transition:color .25s; position:relative; }
 .nav-links a:hover{ color:var(--text); }
