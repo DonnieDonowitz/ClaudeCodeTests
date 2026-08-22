@@ -4,3 +4,6 @@ api/config.php
 
 # File PDF reale dell'ebook: non versionarlo nel repository pubblico.
 protected-ebook/*.pdf
+
+# File di sistema macOS
+.DS_Store
