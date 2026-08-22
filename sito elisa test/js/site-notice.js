@@ -1,7 +1,7 @@
 /* Banner cookie minimale — nessuna dipendenza, usato su tutte le pagine del sito. */
 (function () {
   "use strict";
-  var STORAGE_KEY = "elisafit-cookie-consent";
+  var STORAGE_KEY = "elisafit-notice-ack";
 
   function alreadyChosen() {
     try {
@@ -21,15 +21,15 @@
 
   function init() {
     if (alreadyChosen()) return;
-    var banner = document.getElementById("cookie-banner");
+    var banner = document.getElementById("site-notice");
     if (!banner) return;
 
     requestAnimationFrame(function () {
       banner.classList.add("show");
     });
 
-    var accept = document.getElementById("cookie-accept");
-    var decline = document.getElementById("cookie-decline");
+    var accept = document.getElementById("notice-ok");
+    var decline = document.getElementById("notice-minimal");
 
     function hide(value) {
       remember(value);

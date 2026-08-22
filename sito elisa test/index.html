@@ -41,7 +41,7 @@
 }
 </script>
 
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💪</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23b5502b%22/><text x=%2250%22 y=%2270%22 font-family=%22Georgia,serif%22 font-size=%2262%22 font-weight=%22700%22 fill=%22%23faf7f2%22 text-anchor=%22middle%22>E</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
@@ -77,7 +77,7 @@
       <h1>Trasforma il tuo corpo con il metodo di <span class="text-grad">Elisa</span>, senza palestra e senza confusione.</h1>
       <p class="hero-sub">L'ebook che racchiude schede di allenamento, piani alimentari e strategia mentale che uso ogni giorno con i miei clienti privati. Tutto in un unico PDF, pronto da seguire da oggi stesso.</p>
       <div class="hero-cta">
-        <a href="#offerta" class="btn btn-primary">Scarica ora la guida</a>
+        <a href="#offerta" class="btn btn-primary btn-shine">Scarica ora la guida</a>
         <a href="#contenuto" class="btn btn-ghost">Cosa trovi dentro ↓</a>
       </div>
       <div class="hero-badges">
@@ -105,6 +105,10 @@
   </div>
 
   <div class="scroll-cue"><span>SCORRI</span><span class="line"></span></div>
+
+  <svg class="wave-divider" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,32 C240,80 480,0 720,24 C960,48 1200,88 1440,40 L1440,80 L0,80 Z"></path>
+  </svg>
 </section>
 
 <!-- ================= TRUST STRIP ================= -->
@@ -146,19 +150,19 @@
 </section>
 
 <!-- ================= COSA CONTIENE — SEZIONE EDITORIALE STICKY ================= -->
-<section class="editorial" id="contenuto">
+<section class="editorial panel-band" id="contenuto">
   <div class="container editorial-grid">
     <div class="editorial-sticky reveal">
       <span class="eyebrow">La soluzione</span>
       <h2>Tutto il mio metodo, dentro un unico ebook</h2>
       <p>Niente teoria fine a sé stessa: solo protocolli pratici, testati sul campo con centinaia di clienti reali.</p>
     </div>
-    <div class="editorial-list">
-      <div class="editorial-item reveal"><span class="idx">01</span><div><h4>Valutazione iniziale &amp; obiettivi SMART</h4><p>Definisci con chiarezza dove sei ora e dove vuoi arrivare, senza illusioni né scorciatoie.</p></div></div>
-      <div class="editorial-item reveal"><span class="idx">02</span><div><h4>Schede di allenamento progressive</h4><p>12 settimane di programmazione completa per forza, tono e resistenza, a casa o in palestra.</p></div></div>
-      <div class="editorial-item reveal"><span class="idx">03</span><div><h4>Guida nutrizionale flessibile</h4><p>Come mangiare bene senza rinunciare a ciò che ami, con ricette semplici e sostenibili.</p></div></div>
-      <div class="editorial-item reveal"><span class="idx">04</span><div><h4>Recupero, sonno &amp; mobilità</h4><p>Gli strumenti che nessuno ti racconta per evitare gli infortuni e allenarti a lungo.</p></div></div>
-      <div class="editorial-item reveal"><span class="idx">05</span><div><h4>Mindset &amp; costanza a lungo termine</h4><p>Le strategie mentali per non mollare mai, anche nei momenti difficili.</p></div></div>
+    <div class="editorial-list stagger">
+      <div class="editorial-item reveal" style="--i:0"><span class="idx">01</span><div><h4>Valutazione iniziale &amp; obiettivi SMART</h4><p>Definisci con chiarezza dove sei ora e dove vuoi arrivare, senza illusioni né scorciatoie.</p></div></div>
+      <div class="editorial-item reveal" style="--i:1"><span class="idx">02</span><div><h4>Schede di allenamento progressive</h4><p>12 settimane di programmazione completa per forza, tono e resistenza, a casa o in palestra.</p></div></div>
+      <div class="editorial-item reveal" style="--i:2"><span class="idx">03</span><div><h4>Guida nutrizionale flessibile</h4><p>Come mangiare bene senza rinunciare a ciò che ami, con ricette semplici e sostenibili.</p></div></div>
+      <div class="editorial-item reveal" style="--i:3"><span class="idx">04</span><div><h4>Recupero, sonno &amp; mobilità</h4><p>Gli strumenti che nessuno ti racconta per evitare gli infortuni e allenarti a lungo.</p></div></div>
+      <div class="editorial-item reveal" style="--i:4"><span class="idx">05</span><div><h4>Mindset &amp; costanza a lungo termine</h4><p>Le strategie mentali per non mollare mai, anche nei momenti difficili.</p></div></div>
     </div>
   </div>
 </section>
@@ -193,13 +197,13 @@
 </section>
 
 <!-- ================= BENEFICI ================= -->
-<section class="section" id="risultati">
+<section class="section panel-band" id="risultati">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">Perché funziona</span>
       <h2>Pensato per la vita reale, non per gli atleti professionisti</h2>
     </div>
-    <div class="benefits-grid">
+    <div class="benefits-grid stagger">
       <div class="benefit-card reveal" style="--i:0"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M3 12l9-9 9 9"/><path d="M5 10v11h5v-6h4v6h5V10"/></svg></div><h4>Allenati ovunque</h4><p>Schede pensate per casa, palestra o outdoor. Zero scuse.</p></div>
       <div class="benefit-card reveal" style="--i:1"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div><h4>Solo 30-40 min</h4><p>Allenamenti efficaci che entrano nella tua giornata reale.</p></div>
       <div class="benefit-card reveal" style="--i:2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 21s-7-4.35-9.5-8.5C1 9 2.5 5 6.5 5c2 0 3.5 1.5 4.5 3 1-1.5 2.5-3 4.5-3 4 0 5.5 4 4 7.5C19 16.65 12 21 12 21z"/></svg></div><h4>Nessuna dieta drastica</h4><p>Un metodo alimentare sostenibile, non l'ennesima rinuncia.</p></div>
@@ -252,7 +256,7 @@
 </section>
 
 <!-- ================= OFFERTA / PAGAMENTO ================= -->
-<section class="section" id="offerta">
+<section class="section panel-band" id="offerta">
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow">Offerta di lancio</span>
@@ -335,7 +339,7 @@
     <div class="final-cta reveal-scale">
       <h2>Pronto a iniziare la tua trasformazione?</h2>
       <p>Ottieni oggi stesso il metodo completo di Elisa e inizia ad allenarti con un piano che funziona davvero.</p>
-      <a href="#offerta" class="btn btn-primary">Scarica la guida ora — 27,00€</a>
+      <a href="#offerta" class="btn btn-primary btn-shine">Scarica la guida ora — 27,00€</a>
     </div>
   </div>
 </section>
@@ -364,6 +368,14 @@
 </footer>
 
 <!-- ================= FLOATING ELEMENTS ================= -->
+<nav class="side-nav" id="side-nav" aria-label="Naviga per sezione">
+  <a href="#chi-sono" data-label="Chi sono"></a>
+  <a href="#contenuto" data-label="Cosa contiene"></a>
+  <a href="#risultati" data-label="Risultati"></a>
+  <a href="#recensioni" data-label="Recensioni"></a>
+  <a href="#offerta" data-label="Acquista"></a>
+  <a href="#faq" data-label="FAQ"></a>
+</nav>
 <div class="sticky-cta" id="sticky-cta">
   <span>Guida completa — 27,00€</span>
   <a href="#offerta" class="btn btn-primary">Acquista ora</a>
@@ -371,15 +383,15 @@
 <button class="to-top" id="to-top" aria-label="Torna su">↑</button>
 
 <!-- ================= COOKIE BANNER ================= -->
-<div class="cookie-banner" id="cookie-banner">
+<div class="site-notice" id="site-notice">
   <p>Utilizziamo solo cookie tecnici necessari al funzionamento del sito e all'elaborazione sicura dei pagamenti PayPal. Nessun cookie di profilazione o marketing. Leggi la <a href="cookie-policy.html">Cookie Policy</a>.</p>
-  <div class="cookie-banner-actions">
-    <button class="btn btn-ghost" id="cookie-decline" type="button">Solo necessari</button>
-    <button class="btn btn-primary" id="cookie-accept" type="button">Accetta</button>
+  <div class="site-notice-actions">
+    <button class="btn btn-ghost" id="notice-minimal" type="button">Solo necessari</button>
+    <button class="btn btn-primary" id="notice-ok" type="button">Accetta</button>
   </div>
 </div>
 
 <script src="js/script.js"></script>
-<script src="js/cookie-consent.js"></script>
+<script src="js/site-notice.js"></script>
 </body>
 </html>

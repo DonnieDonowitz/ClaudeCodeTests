@@ -62,6 +62,36 @@
     if (toTop) toTop.classList.toggle("show", window.scrollY > 900);
   }
 
+  /* ---------------- Mini-nav laterale a puntini (scroll-spy) ---------------- */
+  const sideNav = $("#side-nav");
+  const sideNavLinks = $$(".side-nav a");
+  const sideNavSections = sideNavLinks
+    .map((a) => document.querySelector(a.getAttribute("href")))
+    .filter(Boolean);
+
+  function updateSideNav() {
+    if (!sideNav) return;
+    const heroBottom = hero ? hero.offsetTop + hero.offsetHeight * 0.6 : 400;
+    sideNav.classList.toggle("show", window.scrollY > heroBottom);
+    let current = null;
+    sideNavSections.forEach((sec) => {
+      if (window.scrollY + 220 >= sec.offsetTop) current = sec;
+    });
+    sideNavLinks.forEach((a) => {
+      a.classList.toggle("active", !!current && a.getAttribute("href") === "#" + current.id);
+    });
+  }
+
+  /* ---------------- Parallax leggero sul visual dell'hero ---------------- */
+  const tiltWrap = $(".tilt-wrap");
+  function updateHeroParallax() {
+    if (!tiltWrap || !hero || prefersReducedMotion) return;
+    const rect = hero.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+    const progress = Math.min(1, Math.max(0, -rect.top / (rect.height || 1)));
+    tiltWrap.style.transform = `translateY(${progress * 46}px)`;
+  }
+
   let ticking = false;
   window.addEventListener("scroll", () => {
     if (!ticking) {
@@ -69,12 +99,14 @@
         updateProgress();
         updateNav();
         updateFloating();
+        updateSideNav();
+        updateHeroParallax();
         ticking = false;
       });
       ticking = true;
     }
   });
-  updateProgress(); updateNav(); updateFloating();
+  updateProgress(); updateNav(); updateFloating(); updateSideNav(); updateHeroParallax();
 
   if (toTop) toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
