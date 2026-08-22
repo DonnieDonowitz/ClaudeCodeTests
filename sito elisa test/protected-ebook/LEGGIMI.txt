@@ -1,0 +1,15 @@
+Metti qui il file reale dell'ebook, con questo nome esatto (o aggiorna
+EBOOK_FILE_PATH in api/config.php se preferisci un nome diverso):
+
+trasformazione-totale.pdf
+
+IMPORTANTE — sicurezza:
+Questa cartella è già protetta da .htaccess (nessun accesso diretto via browser),
+ma per la massima sicurezza possibile su hosting condiviso ti consigliamo di
+spostarla di un livello SOPRA la cartella "public_html" del tuo account Hostinger,
+così il file non è raggiungibile dal web nemmeno in teoria. Vedi il README.md
+principale, sezione "Sicurezza del PDF", per le istruzioni passo-passo.
+
+Se la sposti, ricordati di aggiornare il percorso in api/config.php:
+  define('EBOOK_FILE_PATH', __DIR__ . '/../../../protected-ebook/trasformazione-totale.pdf');
+  (il numero di "../" dipende da dove la sposti esattamente)

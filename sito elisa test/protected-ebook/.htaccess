@@ -1,0 +1,9 @@
+# Blocca completamente l'accesso diretto via browser al PDF: l'unico modo per
+# scaricarlo è tramite api/download.php con un link firmato e a scadenza.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

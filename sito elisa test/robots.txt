@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
-Disallow: /ebook-download-9f3a7b/
+Disallow: /api/
+Disallow: /protected-ebook/
 Disallow: /thankyou.html
+
+Sitemap: https://www.elisafit.it/sitemap.xml

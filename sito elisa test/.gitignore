@@ -1,0 +1,6 @@
+# Contiene segreti reali (PayPal Secret, chiave di firma dei link): non versionarlo.
+# Duplica api/config.example.php in api/config.php e compila i tuoi dati (vedi README).
+api/config.php
+
+# File PDF reale dell'ebook: non versionarlo nel repository pubblico.
+protected-ebook/*.pdf

@@ -12,11 +12,7 @@
     // PayPal: crea un'app su https://developer.paypal.com/dashboard/applications
     // e incolla qui il tuo CLIENT ID "Live". Vedi README per la guida completa.
     paypalClientId: "TEST_INSERISCI_IL_TUO_PAYPAL_CLIENT_ID",
-    // Skrill: la tua email business Skrill (Quick Checkout). Vedi README.
-    skrillMerchantEmail: "inserisci-la-tua-email@skrill-business.com",
-    skrillStatusUrl: "https://hook.eu1.make.com/INSERISCI_IL_TUO_WEBHOOK_MAKE",
     returnUrl: window.location.origin + window.location.pathname.replace(/index\.html$/, "") + "thankyou.html",
-    cancelUrl: window.location.href,
   };
 
   /* ---------------- Utility ---------------- */
@@ -94,9 +90,9 @@
       navLinksBox.style.left = "0";
       navLinksBox.style.right = "0";
       navLinksBox.style.flexDirection = "column";
-      navLinksBox.style.background = "rgba(11,13,16,.97)";
+      navLinksBox.style.background = "rgba(250,247,242,.98)";
       navLinksBox.style.padding = "24px";
-      navLinksBox.style.borderBottom = "1px solid rgba(255,255,255,.08)";
+      navLinksBox.style.borderBottom = "1px solid var(--card-border)";
     });
     $$("a", navLinksBox).forEach((a) =>
       a.addEventListener("click", () => {
@@ -174,83 +170,7 @@
       });
     });
   }
-  initTilt(".book-3d", 14);
-  initTilt(".avatar-3d", 10);
-  initTilt(".price-card", 6);
-  initTilt(".benefit-card", 8);
-
-  /* ---------------- Parallax blobs on mouse move (hero) ---------------- */
-  if (!prefersReducedMotion && hero) {
-    const blobs = $$(".blob", hero);
-    hero.addEventListener("mousemove", (e) => {
-      const x = e.clientX / window.innerWidth - 0.5;
-      const y = e.clientY / window.innerHeight - 0.5;
-      blobs.forEach((b, i) => {
-        const depth = (i + 1) * 14;
-        b.style.transform = `translate3d(${x * depth}px, ${y * depth}px, 0)`;
-      });
-    });
-  }
-
-  /* ---------------- Lightweight particle network (hero canvas) ---------------- */
-  const canvas = $("#particles-bg");
-  if (canvas && !prefersReducedMotion) {
-    const ctx = canvas.getContext("2d");
-    let w, h, particles, animId;
-    const COUNT = window.innerWidth < 700 ? 34 : 60;
-
-    function resize() {
-      w = canvas.width = canvas.offsetWidth;
-      h = canvas.height = canvas.offsetHeight;
-    }
-    function makeParticles() {
-      particles = Array.from({ length: COUNT }, () => ({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        r: Math.random() * 1.6 + 0.6,
-      }));
-    }
-    function step() {
-      ctx.clearRect(0, 0, w, h);
-      particles.forEach((p) => {
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0 || p.x > w) p.vx *= -1;
-        if (p.y < 0 || p.y > h) p.vy *= -1;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(198,255,60,0.55)";
-        ctx.fill();
-      });
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i], b = particles[j];
-          const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (d < 130) {
-            ctx.strokeStyle = `rgba(51,224,255,${(1 - d / 130) * 0.25})`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.stroke();
-          }
-        }
-      }
-      animId = requestAnimationFrame(step);
-    }
-    function start() {
-      resize(); makeParticles();
-      cancelAnimationFrame(animId);
-      step();
-    }
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) cancelAnimationFrame(animId);
-      else step();
-    });
-    window.addEventListener("resize", () => { resize(); makeParticles(); });
-    start();
-  }
+  initTilt(".book-3d", 6);
 
   /* ---------------- Testimonial slider ---------------- */
   const track = $("#testi-track");
@@ -322,22 +242,10 @@
   }
 
   /* ---------------- Payment method tabs ---------------- */
-  const payTabs = $$(".pay-tab");
-  payTabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      payTabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      $$(".pay-panel").forEach((p) => p.classList.remove("active"));
-      $("#panel-" + tab.dataset.pay).classList.add("active");
-    });
-  });
-
   /* ---------------- Consent checkbox gate ---------------- */
   const consent = $("#consent-checkbox");
-  const skrillBtn = $("#skrill-pay-btn");
   function refreshConsentGate() {
     const ok = consent && consent.checked;
-    if (skrillBtn) skrillBtn.disabled = !ok;
     $("#paypal-button-container")?.classList.toggle("disabled-overlay", !ok);
   }
   if (consent) {
@@ -405,8 +313,12 @@
           });
         },
         onApprove: function (data, actions) {
-          return actions.order.capture().then(function () {
-            window.location.href = CONFIG.returnUrl + "?status=success";
+          return actions.order.capture().then(function (details) {
+            // La consegna vera e propria dell'ebook avviene lato server: PayPal invia
+            // un webhook a api/paypal-webhook.php non appena il pagamento è confermato,
+            // che genera un link di download sicuro e lo invia via email al pagatore.
+            // Questo redirect serve solo per l'esperienza utente sul sito.
+            window.location.href = CONFIG.returnUrl + "?order=" + encodeURIComponent(details.id || data.orderID || "");
           });
         },
         onError: function () {
@@ -416,173 +328,6 @@
       .render("#paypal-button-container");
   }
   loadPaypalSdk();
-
-  /* ---------------- Skrill Quick Checkout (redirect via form POST) ---------------- */
-  if (skrillBtn) {
-    skrillBtn.addEventListener("click", () => {
-      if (!consent || !consent.checked) return;
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "https://pay.skrill.com/";
-      form.target = "_blank";
-      const fields = {
-        pay_to_email: CONFIG.skrillMerchantEmail,
-        recipient_description: "Elisa Fit",
-        transaction_id: "ORD-" + Date.now(),
-        return_url: CONFIG.returnUrl + "?status=success",
-        cancel_url: CONFIG.cancelUrl,
-        status_url: CONFIG.skrillStatusUrl,
-        language: "IT",
-        amount: CONFIG.price,
-        currency: CONFIG.currency,
-        detail1_description: "Prodotto",
-        detail1_text: CONFIG.productName,
-      };
-      Object.entries(fields).forEach(([k, v]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = k;
-        input.value = v;
-        form.appendChild(input);
-      });
-      document.body.appendChild(form);
-      form.submit();
-      form.remove();
-    });
-  }
-
-  /* ---------------- Cursor spotlight ---------------- */
-  const glow = $("#cursor-glow");
-  if (glow && !prefersReducedMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-    window.addEventListener("mousemove", (e) => {
-      glow.classList.add("show");
-      glow.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%,-50%)`;
-    });
-    document.addEventListener("mouseleave", () => glow.classList.remove("show"));
-  }
-
-  /* ---------------- Cinematic pinned 3D scroll transition ---------------- */
-  const cineSection = $("#cinematic");
-  const cineStage = $("#cine-stage");
-  const cineCaptions = $$(".cine-caption");
-  const cineDots = $$(".cine-dots span");
-
-  function smooth01(x) {
-    if (x <= 0) return 0;
-    if (x >= 1) return 1;
-    return x * x * (3 - 2 * x);
-  }
-
-  if (cineSection && cineStage && !prefersReducedMotion) {
-    const keyframes = [
-      { p: 0, ry: -24, rx: 8, s: 0.8, z: -40 },
-      { p: 0.5, ry: 180, rx: -6, s: 1.05, z: 60 },
-      { p: 1, ry: 380, rx: 0, s: 1.3, z: 160 },
-    ];
-
-    function lerpStage(progress) {
-      let a = keyframes[0], b = keyframes[keyframes.length - 1];
-      for (let i = 0; i < keyframes.length - 1; i++) {
-        if (progress >= keyframes[i].p && progress <= keyframes[i + 1].p) {
-          a = keyframes[i]; b = keyframes[i + 1];
-          break;
-        }
-      }
-      const span = b.p - a.p || 1;
-      const t = (progress - a.p) / span;
-      return {
-        ry: a.ry + (b.ry - a.ry) * t,
-        rx: a.rx + (b.rx - a.rx) * t,
-        s: a.s + (b.s - a.s) * t,
-        z: a.z + (b.z - a.z) * t,
-      };
-    }
-
-    function updateCinematic() {
-      const rect = cineSection.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      const progress = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
-
-      const kf = lerpStage(progress);
-      cineStage.style.transform = `translateZ(${kf.z}px) rotateY(${kf.ry}deg) rotateX(${kf.rx}deg) scale(${kf.s})`;
-
-      cineCaptions.forEach((cap) => {
-        const [s, e] = cap.dataset.range.split(",").map(Number);
-        const local = (progress - s) / (e - s || 1);
-        let opacity = 0;
-        if (local >= 0 && local <= 1) {
-          opacity = Math.min(smooth01(local / 0.2), smooth01((1 - local) / 0.2), 1);
-        }
-        cap.style.opacity = String(opacity);
-        cap.classList.toggle("show", opacity > 0.02);
-      });
-
-      const dotIndex = progress < 0.335 ? 0 : progress < 0.665 ? 1 : 2;
-      cineDots.forEach((d, i) => d.classList.toggle("active", i === dotIndex));
-    }
-
-    let cineTicking = false;
-    window.addEventListener("scroll", () => {
-      if (!cineTicking) {
-        requestAnimationFrame(() => { updateCinematic(); cineTicking = false; });
-        cineTicking = true;
-      }
-    });
-    window.addEventListener("resize", updateCinematic);
-    updateCinematic();
-  } else if (cineCaptions.length) {
-    cineCaptions.forEach((cap) => { cap.style.opacity = "1"; cap.classList.add("show"); });
-  }
-
-  /* ---------------- Pinned horizontal module gallery ---------------- */
-  const pinGallery = $(".pin-gallery");
-  const pinTrack = $("#pin-track");
-  const pinViewport = $(".pin-gallery-viewport");
-  const pinProgressBar = $("#pin-progress-bar");
-
-  if (pinGallery && pinTrack && pinViewport) {
-    const desktopQuery = window.matchMedia("(min-width: 901px)");
-    let maxTranslate = 0;
-    let pinActive = false;
-
-    function measurePinGallery() {
-      const trackWidth = pinTrack.scrollWidth;
-      const viewportWidth = pinViewport.clientWidth;
-      maxTranslate = Math.max(0, trackWidth - viewportWidth);
-      pinGallery.style.height = window.innerHeight + maxTranslate + "px";
-    }
-
-    function updatePinGallery() {
-      if (!pinActive) return;
-      const rect = pinGallery.getBoundingClientRect();
-      const progress = maxTranslate > 0 ? Math.min(1, Math.max(0, -rect.top / maxTranslate)) : 0;
-      pinTrack.style.transform = `translate3d(${-progress * maxTranslate}px,0,0)`;
-      if (pinProgressBar) pinProgressBar.style.width = progress * 100 + "%";
-    }
-
-    function setupPinMode() {
-      if (desktopQuery.matches && !prefersReducedMotion) {
-        pinActive = true;
-        measurePinGallery();
-        updatePinGallery();
-      } else {
-        pinActive = false;
-        pinGallery.style.height = "";
-        pinTrack.style.transform = "";
-        if (pinProgressBar) pinProgressBar.style.width = "0%";
-      }
-    }
-
-    let pinTicking = false;
-    window.addEventListener("scroll", () => {
-      if (!pinTicking) {
-        requestAnimationFrame(() => { updatePinGallery(); pinTicking = false; });
-        pinTicking = true;
-      }
-    });
-    window.addEventListener("resize", () => { setupPinMode(); });
-    setupPinMode();
-  }
 
   /* ---------------- Anno / smooth anchor fallback per Safari vecchi ---------------- */
   $$('a[href^="#"]').forEach((a) => {

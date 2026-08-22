@@ -1,0 +1,9 @@
+# Blocca completamente l'accesso via browser a questa cartella: contiene solo
+# piccoli file interni usati dal sistema per evitare invii duplicati.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

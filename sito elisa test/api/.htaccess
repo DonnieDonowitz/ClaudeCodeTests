@@ -1,0 +1,16 @@
+# Blocca l'accesso diretto via browser a config.php, lib.php e ai dati interni:
+# solo gli script PHP di questa cartella possono leggerli (via require), mai un visitatore.
+
+<FilesMatch "^(config(\.example)?|lib)\.php$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<IfModule mod_autoindex.c>
+  Options -Indexes
+</IfModule>
