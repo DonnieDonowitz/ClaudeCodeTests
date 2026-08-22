@@ -451,6 +451,139 @@
     });
   }
 
+  /* ---------------- Cursor spotlight ---------------- */
+  const glow = $("#cursor-glow");
+  if (glow && !prefersReducedMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    window.addEventListener("mousemove", (e) => {
+      glow.classList.add("show");
+      glow.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%,-50%)`;
+    });
+    document.addEventListener("mouseleave", () => glow.classList.remove("show"));
+  }
+
+  /* ---------------- Cinematic pinned 3D scroll transition ---------------- */
+  const cineSection = $("#cinematic");
+  const cineStage = $("#cine-stage");
+  const cineCaptions = $$(".cine-caption");
+  const cineDots = $$(".cine-dots span");
+
+  function smooth01(x) {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    return x * x * (3 - 2 * x);
+  }
+
+  if (cineSection && cineStage && !prefersReducedMotion) {
+    const keyframes = [
+      { p: 0, ry: -24, rx: 8, s: 0.8, z: -40 },
+      { p: 0.5, ry: 180, rx: -6, s: 1.05, z: 60 },
+      { p: 1, ry: 380, rx: 0, s: 1.3, z: 160 },
+    ];
+
+    function lerpStage(progress) {
+      let a = keyframes[0], b = keyframes[keyframes.length - 1];
+      for (let i = 0; i < keyframes.length - 1; i++) {
+        if (progress >= keyframes[i].p && progress <= keyframes[i + 1].p) {
+          a = keyframes[i]; b = keyframes[i + 1];
+          break;
+        }
+      }
+      const span = b.p - a.p || 1;
+      const t = (progress - a.p) / span;
+      return {
+        ry: a.ry + (b.ry - a.ry) * t,
+        rx: a.rx + (b.rx - a.rx) * t,
+        s: a.s + (b.s - a.s) * t,
+        z: a.z + (b.z - a.z) * t,
+      };
+    }
+
+    function updateCinematic() {
+      const rect = cineSection.getBoundingClientRect();
+      const scrollable = rect.height - window.innerHeight;
+      const progress = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
+
+      const kf = lerpStage(progress);
+      cineStage.style.transform = `translateZ(${kf.z}px) rotateY(${kf.ry}deg) rotateX(${kf.rx}deg) scale(${kf.s})`;
+
+      cineCaptions.forEach((cap) => {
+        const [s, e] = cap.dataset.range.split(",").map(Number);
+        const local = (progress - s) / (e - s || 1);
+        let opacity = 0;
+        if (local >= 0 && local <= 1) {
+          opacity = Math.min(smooth01(local / 0.2), smooth01((1 - local) / 0.2), 1);
+        }
+        cap.style.opacity = String(opacity);
+        cap.classList.toggle("show", opacity > 0.02);
+      });
+
+      const dotIndex = progress < 0.335 ? 0 : progress < 0.665 ? 1 : 2;
+      cineDots.forEach((d, i) => d.classList.toggle("active", i === dotIndex));
+    }
+
+    let cineTicking = false;
+    window.addEventListener("scroll", () => {
+      if (!cineTicking) {
+        requestAnimationFrame(() => { updateCinematic(); cineTicking = false; });
+        cineTicking = true;
+      }
+    });
+    window.addEventListener("resize", updateCinematic);
+    updateCinematic();
+  } else if (cineCaptions.length) {
+    cineCaptions.forEach((cap) => { cap.style.opacity = "1"; cap.classList.add("show"); });
+  }
+
+  /* ---------------- Pinned horizontal module gallery ---------------- */
+  const pinGallery = $(".pin-gallery");
+  const pinTrack = $("#pin-track");
+  const pinViewport = $(".pin-gallery-viewport");
+  const pinProgressBar = $("#pin-progress-bar");
+
+  if (pinGallery && pinTrack && pinViewport) {
+    const desktopQuery = window.matchMedia("(min-width: 901px)");
+    let maxTranslate = 0;
+    let pinActive = false;
+
+    function measurePinGallery() {
+      const trackWidth = pinTrack.scrollWidth;
+      const viewportWidth = pinViewport.clientWidth;
+      maxTranslate = Math.max(0, trackWidth - viewportWidth);
+      pinGallery.style.height = window.innerHeight + maxTranslate + "px";
+    }
+
+    function updatePinGallery() {
+      if (!pinActive) return;
+      const rect = pinGallery.getBoundingClientRect();
+      const progress = maxTranslate > 0 ? Math.min(1, Math.max(0, -rect.top / maxTranslate)) : 0;
+      pinTrack.style.transform = `translate3d(${-progress * maxTranslate}px,0,0)`;
+      if (pinProgressBar) pinProgressBar.style.width = progress * 100 + "%";
+    }
+
+    function setupPinMode() {
+      if (desktopQuery.matches && !prefersReducedMotion) {
+        pinActive = true;
+        measurePinGallery();
+        updatePinGallery();
+      } else {
+        pinActive = false;
+        pinGallery.style.height = "";
+        pinTrack.style.transform = "";
+        if (pinProgressBar) pinProgressBar.style.width = "0%";
+      }
+    }
+
+    let pinTicking = false;
+    window.addEventListener("scroll", () => {
+      if (!pinTicking) {
+        requestAnimationFrame(() => { updatePinGallery(); pinTicking = false; });
+        pinTicking = true;
+      }
+    });
+    window.addEventListener("resize", () => { setupPinMode(); });
+    setupPinMode();
+  }
+
   /* ---------------- Anno / smooth anchor fallback per Safari vecchi ---------------- */
   $$('a[href^="#"]').forEach((a) => {
     a.addEventListener("click", (e) => {

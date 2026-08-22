@@ -127,6 +127,8 @@ Il bonifico non può essere automatizzato al 100% senza un gestionale bancario d
 
 ## 7. Personalizzazione del sito
 
+- **Sezione cinematica 3D** (subito dopo l'hero, id `#cinematic`): il libro ruota in 3D e le didascalie cambiano mentre scorri (tecnica "scroll-jacking", come le pagine prodotto Apple). Testi e durata degli stage sono in `index.html` (`.cine-caption[data-range]`) e in `js/script.js` (array `keyframes` dentro "Cinematic pinned 3D scroll transition"). Su chi ha impostato "riduci animazioni" nel sistema, diventa automaticamente una sezione statica normale.
+- **Gallery orizzontale pinnata** (sezione "Cosa contiene"): su desktop la sezione resta fissa mentre le card dei moduli scorrono in orizzontale; su mobile diventa uno swipe orizzontale normale. Per aggiungere/rimuovere un modulo basta aggiungere/togliere un blocco `.pin-card` in `index.html`, il calcolo dello scroll si adatta da solo.
 - **Testi e prezzo**: modifica direttamente `index.html` (cerca le sezioni `<!-- ================= -->` per orientarti) e il prezzo/nome prodotto in `CONFIG` dentro `js/script.js`.
 - **Nome file/cartella ebook**: se cambi nome al PDF o alla cartella `ebook-download-9f3a7b`, aggiorna il link in `thankyou.html`.
 - **Colori**: tutti i colori sono variabili CSS in cima a `css/style.css` (`:root { --accent: ...; --accent-2: ...; }`).
