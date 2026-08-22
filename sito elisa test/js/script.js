@@ -82,14 +82,14 @@
     });
   }
 
-  /* ---------------- Parallax leggero sulla fascia editoriale dell'hero ---------------- */
-  const heroBand = $("#hero-band");
+  /* ---------------- Parallax leggero sul visual 3D dell'hero (scroll) ---------------- */
+  const heroVisual = $(".hero-visual");
   function updateHeroParallax() {
-    if (!heroBand || !hero || prefersReducedMotion) return;
+    if (!heroVisual || !hero || prefersReducedMotion) return;
     const rect = hero.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) return;
     const progress = Math.min(1, Math.max(0, -rect.top / (rect.height || 1)));
-    heroBand.style.transform = `translateY(${progress * -28}px) scale(${1 + progress * 0.04})`;
+    heroVisual.style.transform = `translateY(${progress * -32}px)`;
   }
 
   let ticking = false;
@@ -203,6 +203,7 @@
     });
   }
   initTilt(".price-card", 4);
+  initTilt(".hero-visual-3d", 12);
 
   /* ---------------- Magic card: spotlight che segue il cursore ---------------- */
   if (!prefersReducedMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
