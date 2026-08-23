@@ -54,11 +54,18 @@
   const stickyCta = $("#sticky-cta");
   const toTop = $("#to-top");
   const hero = $(".hero");
+  const offertaSection = $("#offerta");
 
   function updateFloating() {
     const heroBottom = hero ? hero.offsetTop + hero.offsetHeight : 600;
     const past = window.scrollY > heroBottom;
-    if (stickyCta) stickyCta.classList.toggle("show", past);
+    /* Nasconde il CTA flottante mentre il box di acquisto reale è già visibile, per non coprirlo. */
+    let overOfferta = false;
+    if (offertaSection) {
+      const r = offertaSection.getBoundingClientRect();
+      overOfferta = r.top < window.innerHeight * 0.75 && r.bottom > 0;
+    }
+    if (stickyCta) stickyCta.classList.toggle("show", past && !overOfferta);
     if (toTop) toTop.classList.toggle("show", window.scrollY > 900);
   }
 

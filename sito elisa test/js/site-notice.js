@@ -19,6 +19,12 @@
     }
   }
 
+  function updateFloatOffset(banner) {
+    /* Evita che il banner copra i pulsanti flottanti (torna su, CTA sticky). */
+    var h = banner.classList.contains("show") ? banner.offsetHeight : 0;
+    document.documentElement.style.setProperty("--float-bottom", h ? h + 36 + "px" : "24px");
+  }
+
   function init() {
     if (alreadyChosen()) return;
     var banner = document.getElementById("site-notice");
@@ -26,7 +32,9 @@
 
     requestAnimationFrame(function () {
       banner.classList.add("show");
+      updateFloatOffset(banner);
     });
+    window.addEventListener("resize", function () { updateFloatOffset(banner); });
 
     var accept = document.getElementById("notice-ok");
     var decline = document.getElementById("notice-minimal");
@@ -34,6 +42,7 @@
     function hide(value) {
       remember(value);
       banner.classList.remove("show");
+      updateFloatOffset(banner);
     }
 
     if (accept) accept.addEventListener("click", function () { hide("accepted"); });
