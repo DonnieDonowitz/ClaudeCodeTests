@@ -99,24 +99,41 @@
     heroVisual.style.transform = `translateY(${progress * -32}px)`;
   }
 
-  /* ---------------- Scroll story: capitoli foto+testo agganciati allo scroll, avanti e indietro ---------------- */
+  /* ---------------- Scroll story: capitoli foto+testo agganciati allo scroll, avanti e indietro ----------------
+     La sezione è alta (N+1) altezze di viewport: ogni capitolo riceve un'intera altezza di
+     scroll dedicata, quindi l'ultimo capitolo è già completamente comparso quando la sezione
+     si sgancia (niente più uscita "a metà"). Lo zoom sulla foto attiva è pilotato in tempo
+     reale dalla posizione di scroll (vero "scrubbing"), non da un timer CSS a durata fissa. */
   const scrollStory = $("#scrollstory");
   const ssLayers = $$(".scrollstory-layer", scrollStory);
   const ssChapters = $$(".scrollstory-chapter", scrollStory);
   const ssDots = $$(".scrollstory-progress span", scrollStory);
+  const ssCount = ssChapters.length;
   let ssActive = -1;
   function updateScrollStory() {
-    if (!scrollStory || !ssChapters.length) return;
+    if (!scrollStory || !ssCount) return;
     const rect = scrollStory.getBoundingClientRect();
     const total = rect.height - window.innerHeight;
     if (total <= 0) return;
     const progress = Math.min(1, Math.max(0, -rect.top / total));
-    const idx = Math.min(ssChapters.length - 1, Math.floor(progress * ssChapters.length));
-    if (idx === ssActive) return;
-    ssActive = idx;
-    ssLayers.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
-    ssChapters.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
-    ssDots.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
+    const chapterProgress = progress * ssCount;
+    const idx = Math.min(ssCount - 1, Math.floor(chapterProgress));
+    const localProgress = Math.min(1, Math.max(0, chapterProgress - idx));
+
+    if (idx !== ssActive) {
+      ssActive = idx;
+      ssLayers.forEach((el) => {
+        const isActive = Number(el.dataset.chapter) === idx;
+        el.classList.toggle("active", isActive);
+        if (!isActive) el.style.transform = "";
+      });
+      ssChapters.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
+      ssDots.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
+    }
+    if (!prefersReducedMotion) {
+      const activeLayer = ssLayers[idx];
+      if (activeLayer) activeLayer.style.transform = `scale(${(1 + localProgress * 0.07).toFixed(4)})`;
+    }
   }
 
   let ticking = false;

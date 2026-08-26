@@ -231,16 +231,21 @@ h3{ font-size:1.35rem; }
 @keyframes scrollLine{ 0%{ opacity:0; transform:scaleY(0); transform-origin:top;} 40%{opacity:1; transform:scaleY(1); transform-origin:top;} 100%{opacity:0; transform:scaleY(1); transform-origin:bottom;} }
 
 /* ---------- Scroll story: sequenza foto+testo agganciata allo scroll, avanti e indietro (ispirata a IONOS) ---------- */
-.scrollstory{ position:relative; height:300vh; }
-@media(max-width:768px){ .scrollstory{ height:220vh; } }
-.scrollstory-pin{ position:sticky; top:0; height:100vh; overflow:hidden; }
+/* 4 "schermate" di scroll per 3 capitoli: ogni capitolo ottiene un'intera altezza di
+   viewport dedicata prima che scatti il successivo, ed è già finito di comparire quando
+   la sezione si sgancia — niente più uscita a metà sull'ultimo capitolo. */
+.scrollstory{ position:relative; height:400vh; }
+.scrollstory-pin{
+  position:sticky; top:0; height:100vh; overflow:hidden;
+  height:100svh; /* viewport dinamico: copertura piena anche su mobile, senza il gap della barra indirizzi */
+}
 .scrollstory-bg{ position:absolute; inset:0; z-index:0; }
 .scrollstory-layer{
   position:absolute; inset:0; background-size:cover; background-position:center; background-repeat:no-repeat;
   opacity:0; transform:scale(1.14); filter:saturate(1.05) contrast(1.1) brightness(.5);
-  transition:opacity 1.2s var(--ease), transform 3.6s linear;
+  transition:opacity .9s var(--ease);
 }
-.scrollstory-layer.active{ opacity:1; transform:scale(1); }
+.scrollstory-layer.active{ opacity:1; }
 .scrollstory-layer.ch-0{ background-image:url('../assets/hero-band.jpg'), linear-gradient(160deg, #241d18, #100c09); }
 .scrollstory-layer.ch-1{ background-image:url('../assets/about-photo.jpg'), linear-gradient(155deg, #241d18, #100c09); background-position:center 30%; }
 .scrollstory-layer.ch-2{ background-image:url('../assets/about-photo.jpg'), linear-gradient(155deg, #241d18, #100c09); background-position:75% 60%; }
