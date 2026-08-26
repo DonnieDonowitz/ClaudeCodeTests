@@ -230,6 +230,40 @@ h3{ font-size:1.35rem; }
 .scroll-cue .line{ width:1px; height:32px; background:linear-gradient(var(--text-dim),transparent); animation:scrollLine 2s infinite; }
 @keyframes scrollLine{ 0%{ opacity:0; transform:scaleY(0); transform-origin:top;} 40%{opacity:1; transform:scaleY(1); transform-origin:top;} 100%{opacity:0; transform:scaleY(1); transform-origin:bottom;} }
 
+/* ---------- Scroll story: sequenza foto+testo agganciata allo scroll, avanti e indietro (ispirata a IONOS) ---------- */
+.scrollstory{ position:relative; height:300vh; }
+@media(max-width:768px){ .scrollstory{ height:220vh; } }
+.scrollstory-pin{ position:sticky; top:0; height:100vh; overflow:hidden; }
+.scrollstory-bg{ position:absolute; inset:0; z-index:0; }
+.scrollstory-layer{
+  position:absolute; inset:0; background-size:cover; background-position:center; background-repeat:no-repeat;
+  opacity:0; transform:scale(1.14); filter:saturate(1.05) contrast(1.1) brightness(.5);
+  transition:opacity 1.2s var(--ease), transform 3.6s linear;
+}
+.scrollstory-layer.active{ opacity:1; transform:scale(1); }
+.scrollstory-layer.ch-0{ background-image:url('../assets/hero-band.jpg'), linear-gradient(160deg, #241d18, #100c09); }
+.scrollstory-layer.ch-1{ background-image:url('../assets/about-photo.jpg'), linear-gradient(155deg, #241d18, #100c09); background-position:center 30%; }
+.scrollstory-layer.ch-2{ background-image:url('../assets/about-photo.jpg'), linear-gradient(155deg, #241d18, #100c09); background-position:75% 60%; }
+.scrollstory-scrim{
+  position:absolute; inset:0;
+  background:linear-gradient(90deg, rgba(10,9,8,.94) 0%, rgba(10,9,8,.6) 46%, rgba(10,9,8,.28) 100%);
+}
+@media(max-width:768px){ .scrollstory-scrim{ background:linear-gradient(180deg, rgba(10,9,8,.55) 0%, rgba(10,9,8,.88) 62%, rgba(10,9,8,.94) 100%); } }
+.scrollstory-content{ position:relative; height:100%; z-index:1; }
+.scrollstory-chapter{
+  position:absolute; top:50%; left:0; right:0; max-width:600px; transform:translateY(-50%);
+  opacity:0; transition:opacity .3s ease; pointer-events:none;
+}
+@media(max-width:768px){ .scrollstory-chapter{ bottom:100px; top:auto; transform:none; max-width:none; } }
+.scrollstory-chapter.active{ opacity:1; pointer-events:auto; transition:opacity .5s var(--ease) .2s; }
+.scrollstory-chapter h2{ margin:14px 0 16px; }
+.scrollstory-chapter p{ color:var(--text-dim); font-size:1.08rem; max-width:46ch; }
+.scrollstory-progress{ position:absolute; left:24px; bottom:40px; z-index:2; display:flex; gap:10px; }
+@media(max-width:768px){ .scrollstory-progress{ left:0; right:0; bottom:56px; justify-content:center; padding:0 24px; } }
+.scrollstory-progress span{ width:28px; height:3px; border-radius:3px; background:rgba(245,239,228,.22); transition:background .3s, width .3s; }
+.scrollstory-progress span.active{ background:var(--accent); width:44px; box-shadow:0 0 10px 1px rgba(var(--accent-rgb),.6); }
+@media(prefers-reduced-motion: reduce){ .scrollstory-layer{ transform:none !important; } }
+
 /* ---------- Reveal on scroll — "esposizione cinematica": da scuro/sfocato a nitido ---------- */
 .reveal{
   opacity:0; transform:translateY(46px) scale(.98); filter:blur(9px) brightness(.45);

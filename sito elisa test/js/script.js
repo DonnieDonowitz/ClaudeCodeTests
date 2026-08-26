@@ -99,6 +99,26 @@
     heroVisual.style.transform = `translateY(${progress * -32}px)`;
   }
 
+  /* ---------------- Scroll story: capitoli foto+testo agganciati allo scroll, avanti e indietro ---------------- */
+  const scrollStory = $("#scrollstory");
+  const ssLayers = $$(".scrollstory-layer", scrollStory);
+  const ssChapters = $$(".scrollstory-chapter", scrollStory);
+  const ssDots = $$(".scrollstory-progress span", scrollStory);
+  let ssActive = -1;
+  function updateScrollStory() {
+    if (!scrollStory || !ssChapters.length) return;
+    const rect = scrollStory.getBoundingClientRect();
+    const total = rect.height - window.innerHeight;
+    if (total <= 0) return;
+    const progress = Math.min(1, Math.max(0, -rect.top / total));
+    const idx = Math.min(ssChapters.length - 1, Math.floor(progress * ssChapters.length));
+    if (idx === ssActive) return;
+    ssActive = idx;
+    ssLayers.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
+    ssChapters.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
+    ssDots.forEach((el) => el.classList.toggle("active", Number(el.dataset.chapter) === idx));
+  }
+
   let ticking = false;
   window.addEventListener("scroll", () => {
     if (!ticking) {
@@ -108,12 +128,13 @@
         updateFloating();
         updateSideNav();
         updateHeroParallax();
+        updateScrollStory();
         ticking = false;
       });
       ticking = true;
     }
   });
-  updateProgress(); updateNav(); updateFloating(); updateSideNav(); updateHeroParallax();
+  updateProgress(); updateNav(); updateFloating(); updateSideNav(); updateHeroParallax(); updateScrollStory();
 
   if (toTop) toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
