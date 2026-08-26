@@ -129,7 +129,7 @@
       navLinksBox.style.left = "0";
       navLinksBox.style.right = "0";
       navLinksBox.style.flexDirection = "column";
-      navLinksBox.style.background = "rgba(250,247,242,.98)";
+      navLinksBox.style.background = "rgba(10,9,8,.97)";
       navLinksBox.style.padding = "24px";
       navLinksBox.style.borderBottom = "1px solid var(--card-border)";
     });
@@ -211,6 +211,29 @@
   }
   initTilt(".price-card", 4);
   initTilt(".hero-visual-3d", 12);
+
+  /* ---------------- Tracciamento cursore su più livelli di profondità (scena 3D cinematica) ---------------- */
+  function initCursorParallax(sceneSelector, strength) {
+    const scenes = $$(sceneSelector);
+    if (!scenes.length || prefersReducedMotion || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    const px = strength || 30;
+    scenes.forEach((scene) => {
+      scene.addEventListener("mousemove", (e) => {
+        const r = scene.getBoundingClientRect();
+        const nx = (e.clientX - r.left) / r.width - 0.5;
+        const ny = (e.clientY - r.top) / r.height - 0.5;
+        scene.style.setProperty("--px", (nx * -px).toFixed(1) + "px");
+        scene.style.setProperty("--py", (ny * -px).toFixed(1) + "px");
+      });
+      scene.addEventListener("mouseleave", () => {
+        scene.style.setProperty("--px", "0px");
+        scene.style.setProperty("--py", "0px");
+      });
+    });
+  }
+  initCursorParallax(".hero-visual", 34);
+  initCursorParallax(".about-wrap", 16);
+  initCursorParallax(".editorial-sticky", 14);
 
   /* ---------------- Magic card: spotlight che segue il cursore ---------------- */
   if (!prefersReducedMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
