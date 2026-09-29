@@ -76,13 +76,13 @@ function poolStats(pools, athletes) {
 }
 
 // Classifica dopo i gironi: V/M, indice (TS-TR), TS, poi ranking iniziale.
-function ranking(pools, athletes) {
+function ranking(pools, athletes, lots = {}) {
   const st = poolStats(pools, athletes);
   const seed = new Map(athletes.map((a, i) => [a.id, i]));
   return Object.values(st).map(s => ({
     ...s, ratio: s.m ? s.v / s.m : 0, ind: s.ts - s.tr,
-  })).sort((x, y) => y.ratio - x.ratio || y.ind - x.ind || y.ts - x.ts || seed.get(x.id) - seed.get(y.id))
-    .map((s, i) => ({ ...s, rank: i + 1 }));
+  })).sort((x, y) => y.ratio - x.ratio || y.ind - x.ind || y.ts - x.ts || (lots[x.id] ?? 0) - (lots[y.id] ?? 0) || seed.get(x.id) - seed.get(y.id))
+    .map((s, i, arr) => ({ ...s, rank: i + 1, tie: [arr[i - 1], arr[i + 1]].some(o => o && o.ratio === s.ratio && o.ind === s.ind && o.ts === s.ts) }));
 }
 
 function seedOrder(size) {
@@ -136,12 +136,8 @@ function resetMatch(rounds, r, i) {
   }
 }
 
-function setDEScore(rounds, r, i, sa, sb) {
-  const m = rounds[r]?.[i];
-  if (!m || !m.a || !m.b) throw new Error('Assalto non disponibile');
-  if (sa === sb) throw new Error('Il pareggio non è ammesso');
-  m.sa = sa; m.sb = sb;
-  const w = sa > sb ? m.a : m.b;
+function setWinner(rounds, r, i, w) {
+  const m = rounds[r][i];
   const changed = m.winner && m.winner !== w;
   m.winner = w;
   if (r + 1 < rounds.length) {
@@ -152,4 +148,39 @@ function setDEScore(rounds, r, i, sa, sb) {
   }
 }
 
-module.exports = { POOL_ORDERS, poolOrder, defaultPoolCount, buildPools, poolStats, ranking, seedOrder, buildBracket, setDEScore };
+function setDEScore(rounds, r, i, sa, sb) {
+  const m = rounds[r]?.[i];
+  if (!m || !m.a || !m.b) throw new Error('Assalto non disponibile');
+  if (sa === sb) throw new Error('Il pareggio non è ammesso');
+  m.sa = sa; m.sb = sb; m.forfeit = false;
+  setWinner(rounds, r, i, sa > sb ? m.a : m.b);
+}
+
+// Vittoria a tavolino (ritiro/infortunio): side = lato che vince.
+function setDEForfeit(rounds, r, i, side) {
+  const m = rounds[r]?.[i];
+  if (!m || !m.a || !m.b) throw new Error('Assalto non disponibile');
+  m.sa = m.sb = null; m.forfeit = true;
+  setWinner(rounds, r, i, side === 'a' ? m.a : m.b);
+}
+
+// Classifica finale: 1°, 2°, due 3° ex aequo (semifinali), poi per turno di uscita e classifica gironi.
+function finalRanking(de, poolRank) {
+  const out = []; const seen = new Set();
+  const push = (id, pos, tie) => { if (id && !seen.has(id)) { seen.add(id); out.push({ id, pos, tie: !!tie }); } };
+  const R = de.rounds, last = R.length - 1;
+  const fin = R[last][0];
+  if (!fin.winner) return [];
+  push(fin.winner, 1); push(fin.a === fin.winner ? fin.b : fin.a, 2);
+  let pos = 3;
+  for (let r = last - 1; r >= 0; r--) {
+    const losers = R[r].filter(m => m.winner && m.a && m.b).map(m => (m.a === m.winner ? m.b : m.a));
+    losers.sort((x, y) => poolRank.indexOf(x) - poolRank.indexOf(y));
+    const tie = r === last - 1 || losers.length > 1 && r === last - 1;
+    losers.forEach(id => push(id, pos, r === last - 1));
+    pos += losers.length;
+  }
+  return out;
+}
+
+module.exports = { POOL_ORDERS, poolOrder, defaultPoolCount, buildPools, poolStats, ranking, seedOrder, buildBracket, setDEScore, setDEForfeit, finalRanking };

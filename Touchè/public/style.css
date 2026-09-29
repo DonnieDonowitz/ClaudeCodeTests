@@ -33,3 +33,4 @@ td.diag{background:var(--line)}td.win{color:var(--ok);font-weight:600}
 .match .row.w{background:var(--acc2);font-weight:600}.match .row input{width:42px;padding:2px;text-align:center}
 .msg{color:var(--acc);margin:8px 0}.row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .podium{font:600 1.1rem Georgia,serif;color:var(--acc)}
+@media print{header,.tabs,.noprint,button{display:none!important}body{background:#fff;color:#000}.card{border:0}}

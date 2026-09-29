@@ -34,12 +34,14 @@ function owned(req, id) {
   if (c.ownerId !== u.id) bad('Non sei il direttore di questa gara', 403);
   return c;
 }
+const active = c => c.athletes.filter(a => !a.absent);
 const status = c => c.de ? (c.de.rounds.at(-1)[0].winner ? 'concluso' : 'tabellone') : c.pools ? 'gironi' : 'iscrizioni';
 
 function view(c, req) {
   const u = userOf(req);
   const out = { ...c, status: status(c), owner: db.users.find(x => x.id === c.ownerId)?.name, canEdit: !!u && u.id === c.ownerId };
-  if (c.pools) out.ranking = E.ranking(c.pools, c.athletes);
+  if (c.pools) out.ranking = E.ranking(c.pools, active(c), c.lots);
+  if (c.de) out.final = E.finalRanking(c.de, out.ranking.map(r => r.id));
   return out;
 }
 
@@ -103,6 +105,12 @@ route('DELETE', '/api/competitions/(\\w+)/athletes/(\\w+)', (req, b, res, [id, a
   if (c.pools) bad('I gironi sono già stati generati');
   c.athletes = c.athletes.filter(a => a.id !== aid); save(); return view(c, req);
 });
+route('POST', '/api/competitions/(\\w+)/athletes/(\\w+)/absent', (req, b, res, [id, aid]) => {
+  const c = owned(req, id);
+  if (c.pools) bad('I gironi sono già stati generati');
+  const a = c.athletes.find(x => x.id === aid) || bad('Atleta non trovato', 404);
+  a.absent = !a.absent; save(); return view(c, req);
+});
 route('POST', '/api/competitions/(\\w+)/athletes/(\\w+)/move', (req, b, res, [id, aid]) => {
   const c = owned(req, id);
   if (c.pools) bad('I gironi sono già stati generati');
@@ -113,8 +121,10 @@ route('POST', '/api/competitions/(\\w+)/athletes/(\\w+)/move', (req, b, res, [id
 
 route('POST', '/api/competitions/(\\w+)/pools', (req, b, res, [id]) => {
   const c = owned(req, id);
-  if (c.athletes.length < 4) bad('Servono almeno 4 atleti');
-  c.pools = E.buildPools(c.athletes, Number(b.poolCount) || 0); c.de = null; save(); return view(c, req);
+  const act = active(c);
+  if (act.length < 4) bad('Servono almeno 4 atleti presenti');
+  c.lots = Object.fromEntries(act.map(a => [a.id, Math.random()]));
+  c.pools = E.buildPools(act, Number(b.poolCount) || 0); c.de = null; save(); return view(c, req);
 });
 route('DELETE', '/api/competitions/(\\w+)/pools', (req, b, res, [id]) => {
   const c = owned(req, id); c.pools = null; c.de = null; save(); return view(c, req);
@@ -136,7 +146,7 @@ route('POST', '/api/competitions/(\\w+)/de', (req, b, res, [id]) => {
   const c = owned(req, id);
   if (!c.pools) bad('Genera prima i gironi');
   if (c.pools.some(p => p.bouts.some(x => x.sa == null))) bad('Completa tutti gli assalti dei gironi');
-  c.de = E.buildBracket(E.ranking(c.pools, c.athletes).map(r => r.id)); save(); return view(c, req);
+  c.de = E.buildBracket(E.ranking(c.pools, active(c), c.lots).map(r => r.id)); save(); return view(c, req);
 });
 route('DELETE', '/api/competitions/(\\w+)/de', (req, b, res, [id]) => {
   const c = owned(req, id); c.de = null; save(); return view(c, req);
@@ -144,7 +154,7 @@ route('DELETE', '/api/competitions/(\\w+)/de', (req, b, res, [id]) => {
 route('PUT', '/api/competitions/(\\w+)/de/(\\d+)/(\\d+)', (req, b, res, [id, r, i]) => {
   const c = owned(req, id);
   if (!c.de) bad('Tabellone non generato');
-  try { E.setDEScore(c.de.rounds, +r, +i, score(b.sa, 15), score(b.sb, 15)); } catch (e) { if (e instanceof HttpError) throw e; bad(e.message); }
+  try { if (b.forfeit) E.setDEForfeit(c.de.rounds, +r, +i, b.forfeit === 'a' ? 'a' : 'b'); else E.setDEScore(c.de.rounds, +r, +i, score(b.sa, 15), score(b.sb, 15)); } catch (e) { if (e instanceof HttpError) throw e; bad(e.message); }
   save(); return view(c, req);
 });
 
