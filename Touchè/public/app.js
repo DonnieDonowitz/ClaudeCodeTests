@@ -148,19 +148,37 @@ function roundName(size, r) {
   const left = size / 2 ** r;
   return left === 2 ? 'Finale' : left === 4 ? 'Semifinali' : left === 8 ? 'Quarti' : `Tabellone dei ${left}`;
 }
+let brRound = 'all';
 function bracketTab(c, n0) {
-  const { size, rounds } = c.de, champ = rounds.at(-1)[0].winner;
+  const { size, rounds } = c.de, last = rounds.length - 1, champ = rounds[last][0].winner;
   const pos = Object.fromEntries(c.ranking.map(r => [r.id, r.rank]));
   // Posizione dopo i gironi davanti al nome.
   const n = id => (id ? `<i class="seed" title="Posizione dopo i gironi">${pos[id] ?? ''}</i>` : '') + n0(id);
-  return (champ ? `<p class="podium">🏆 ${n0(champ)}</p>` : '') + `<div class="bracket">` + rounds.map((rd, r) =>
-    `<div class="round"><h3>${roundName(size, r)}</h3>${rd.map((m, i) => {
-      if (r === 0 && (!m.a || !m.b)) return `<div class="match"><div class="row ${m.a ? 'w' : ''}"><span>${n(m.a || m.b)}</span></div><div class="row mute">Bye</div></div>`;
-      const mine = c.referee && m.refereeId === c.referee.id, ed = m.a && m.b && (c.canEdit || mine);
-      const row = (id, s, w) => `<div class="row ${m.winner && m.winner === id ? 'w' : ''}"><span>${n(id)}</span><span>${m.forfeit ? (m.winner === id ? '<b>V*</b>' : '') : ed ? `<input data-live data-de="${r}/${i}" data-s="${s}" value="${w ?? ''}" inputmode="numeric">${c.canEdit ? ` <button class="small" data-ff="${r}/${i}" data-side="${s}" title="Vittoria a tavolino">F</button>` : ''}` : `<b>${w ?? ''}</b>`}</span></div>`;
-      const foot = m.a && m.b && !m.winner ? (c.canEdit ? refSelect(c, 'data-refde', `${r}/${i}`, m.refereeId) : m.refereeId ? `<span>Arbitro: <b>${esc(refName(c, m.refereeId) || '')}</b></span>` : '') : (m.refereeId ? `<span>Arbitro: ${esc(refName(c, m.refereeId) || '')}</span>` : '');
-      return `<div class="match ${mine ? 'mine' : ''}">${row(m.a, 'a', m.sa)}${row(m.b, 'b', m.sb)}${foot ? `<div class="foot">${foot}</div>` : ''}</div>`;
-    }).join('')}</div>`).join('') + '</div>' + (c.canEdit ? `<div class="card row2" style="margin-top:14px"><button class="danger" id="resetDE">Rigenera tabellone</button></div>` : '');
+  const isBye = (r, m) => r === 0 && (!m.a || !m.b);
+  const total = (rd, r) => rd.filter(m => !isBye(r, m)).length, done = (rd, r) => rd.filter(m => m.winner && !isBye(r, m)).length;
+
+  const card = (r, i, m, list) => {
+    if (isBye(r, m)) return `<div class="match bye"><div class="row w"><span>${n(m.a || m.b)}</span><span class="mute">bye</span></div></div>`;
+    const mine = c.referee && m.refereeId === c.referee.id, ed = c.canEdit || mine;
+    const row = (id, s, w) => `<div class="row ${m.winner && m.winner === id ? 'w' : ''}"><span>${n(id)}</span><span>${m.forfeit ? (m.winner === id ? '<b>V*</b>' : '') : m.a && m.b && ed ? `<input data-live data-de="${r}/${i}" data-s="${s}" value="${w ?? ''}" inputmode="numeric">${c.canEdit ? ` <button class="small" data-ff="${r}/${i}" data-side="${s}" title="Vittoria a tavolino">F</button>` : ''}` : `<b>${w ?? ''}</b>`}</span></div>`;
+    const foot = m.a && m.b && !m.winner && c.canEdit ? refSelect(c, 'data-refde', `${r}/${i}`, m.refereeId) : m.refereeId ? `<span>Arbitro: <b>${esc(refName(c, m.refereeId) || '')}</b></span>` : '';
+    return `<div class="match ${mine ? 'mine' : ''}">${row(m.a, 'a', m.sa)}${row(m.b, 'b', m.sb)}</div>${foot ? `<div class="${list ? 'foot' : 'refl'}">${foot}</div>` : ''}`;
+  };
+
+  const sel = `<div class="tabs sub"><a href="#" data-rd="all" class="${brRound === 'all' ? 'on' : ''}">Tutto il tabellone</a>${rounds.map((rd, r) =>
+    `<a href="#" data-rd="${r}" class="${String(brRound) === String(r) ? 'on' : ''}">${roundName(size, r)} <small>${done(rd, r)}/${total(rd, r)}</small></a>`).join('')}</div>`;
+
+  let body;
+  if (brRound === 'all' || !rounds[brRound]) {
+    // Albero: le colonne hanno la stessa altezza e ogni assalto occupa una fetta uguale, così i turni si allineano.
+    body = `<div class="tree">${rounds.map((rd, r) => `<div class="col c${r === 0 ? 0 : 1}"><h3>${roundName(size, r)}</h3><div class="slots">${rd.map((m, i) =>
+      `<div class="slot ${r < last ? 'out ' + (i % 2 ? 'bot' : 'top') : ''}">${r > 0 ? '<i class="in"></i>' : ''}${card(r, i, m, false)}</div>`).join('')}</div></div>`).join('')}</div>`;
+  } else {
+    const r = +brRound;
+    body = `<div class="rdlist">${rounds[r].map((m, i) => `<div class="cell"><div class="mute" style="margin:0 4px 4px">Assalto ${i + 1}</div>${card(r, i, m, true)}</div>`).join('')}</div>`;
+  }
+  return (champ ? `<p class="podium">🏆 ${n0(champ)}</p>` : '') + sel + body +
+    (c.canEdit ? `<div class="card row2" style="margin-top:14px"><button class="danger" id="resetDE">Rigenera tabellone</button></div>` : '');
 }
 
 function refereesTab(c) {
@@ -234,6 +252,7 @@ function bind(c) {
     for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
     await api('POST', `/competitions/${c.id}/ranking`, { file: btoa(bin), filename: f.name }); render();
   });
+  all('[data-rd]', a => a.onclick = e => { e.preventDefault(); brRound = a.dataset.rd; render(); });
   all('td.e', td => td.onclick = () => openBout(c, +td.dataset.p, td.dataset.a, td.dataset.b));
   // Tabellone: il punteggio parte quando entrambi i campi sono compilati.
   all('input[data-live]', inp => inp.onchange = act(async () => {
