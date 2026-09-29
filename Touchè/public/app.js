@@ -174,8 +174,11 @@ function bracketTab(c, n0) {
     body = `<div class="tree">${rounds.map((rd, r) => `<div class="col c${r === 0 ? 0 : 1}"><h3>${roundName(size, r)}</h3><div class="slots">${rd.map((m, i) =>
       `<div class="slot ${r < last ? 'out ' + (i % 2 ? 'bot' : 'top') : ''}">${r > 0 ? '<i class="in"></i>' : ''}${card(r, i, m, false)}</div>`).join('')}</div></div>`).join('')}</div>`;
   } else {
+    // Stessa struttura dell'albero: solo la colonna del turno scelto, con gli stessi spazi tra gli assalti
+    // e le linee delle coppie che escono verso il turno successivo (vuoto).
     const r = +brRound;
-    body = `<div class="rdlist">${rounds[r].map((m, i) => `<div class="cell"><div class="mute" style="margin:0 4px 4px">Assalto ${i + 1}</div>${card(r, i, m, true)}</div>`).join('')}</div>`;
+    body = `<div class="tree single"><div class="col ${r === 0 ? 'c0' : 'c1'}"><h3>${roundName(size, r)}</h3><div class="slots">${rounds[r].map((m, i) =>
+      `<div class="slot ${r < last ? 'out ' + (i % 2 ? 'bot' : 'top') : ''}" ${r > 0 ? `style="flex:none;height:${r < last ? 104 * 2 ** r : 104}px"` : ''}>${r < last && i % 2 === 0 ? '<i class="dangle"></i>' : ''}${card(r, i, m, false)}</div>`).join('')}</div></div></div>`;
   }
   return (champ ? `<p class="podium">🏆 ${n0(champ)}</p>` : '') + sel + body +
     (c.canEdit ? `<div class="card row2" style="margin-top:14px"><button class="danger" id="resetDE">Rigenera tabellone</button></div>` : '');
