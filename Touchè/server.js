@@ -14,6 +14,8 @@ function save() {
   fs.writeFileSync(DB_FILE + '.tmp', JSON.stringify(db));
   fs.renameSync(DB_FILE + '.tmp', DB_FILE);
 }
+const REGIONS = ['abruzzo', 'basilicata', 'calabria', 'campania', 'emilia-romagna', 'friuli-venezia-giulia', 'lazio', 'liguria', 'lombardia', 'marche', 'molise', 'piemonte', 'puglia', 'sardegna', 'sicilia', 'toscana', 'trentino-alto-adige', 'umbria', 'valle-d-aosta', 'veneto'];
+const ZONES = ['nazionale', 'master', ...REGIONS];
 const uid = () => crypto.randomBytes(6).toString('hex');
 const hash = (pw, salt) => crypto.scryptSync(pw, salt, 32).toString('hex');
 class HttpError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
@@ -27,6 +29,21 @@ function userOf(req) {
   const uidv = db.sessions[parseCookie(req)];
   return db.users.find(u => u.id === uidv) || null;
 }
+function refOf(req) {
+  const v = db.sessions[parseCookie(req)];
+  if (typeof v !== 'string' || !v.startsWith('ref:')) return null;
+  const [, cid, rid] = v.split(':');
+  const c = db.competitions.find(x => x.id === cid);
+  const r = c?.referees?.find(x => x.id === rid);
+  return r ? { c, r } : null;
+}
+// Può inserire risultati il direttore della gara o l'arbitro assegnato a quel girone/assalto.
+function canScore(req, c, refereeId) {
+  const u = userOf(req);
+  if (u && u.id === c.ownerId) return true;
+  const rf = refOf(req);
+  return !!(rf && rf.c.id === c.id && refereeId && rf.r.id === refereeId);
+}
 function need(req) { return userOf(req) || bad('Accesso richiesto', 401); }
 function comp(id) { return db.competitions.find(c => c.id === id) || bad('Competizione non trovata', 404); }
 function owned(req, id) {
@@ -35,11 +52,20 @@ function owned(req, id) {
   return c;
 }
 const active = c => c.athletes.filter(a => !a.absent);
+function progress(c) {
+  const bouts = (c.pools || []).flatMap(p => p.bouts);
+  const de = (c.de?.rounds || []).flat().filter(m => m.a && m.b);
+  const all = [...bouts, ...de];
+  return { done: all.filter(m => m.forfeit || m.sa != null).length, total: all.length };
+}
 const status = c => c.de ? (c.de.rounds.at(-1)[0].winner ? 'concluso' : 'tabellone') : c.pools ? 'gironi' : 'iscrizioni';
 
 function view(c, req) {
   const u = userOf(req);
-  const out = { ...c, status: status(c), owner: db.users.find(x => x.id === c.ownerId)?.name, canEdit: !!u && u.id === c.ownerId };
+  const rf = refOf(req);
+  const out = { ...c, zone: c.zone || 'nazionale', status: status(c), owner: db.users.find(x => x.id === c.ownerId)?.name, canEdit: !!u && u.id === c.ownerId };
+  out.referee = rf && rf.c.id === c.id ? { id: rf.r.id, name: rf.r.name } : null;
+  if (!out.canEdit) out.referees = (c.referees || []).map(r => ({ id: r.id, name: r.name }));
   if (c.pools) out.ranking = E.ranking(c.pools, active(c), c.lots);
   if (c.de) out.final = E.finalRanking(c.de, out.ranking.map(r => r.id));
   return out;
@@ -74,17 +100,33 @@ route('POST', '/api/logout', (req, b, res) => {
   delete db.sessions[parseCookie(req)]; save();
   res.setHeader('Set-Cookie', 'sid=; Path=/; Max-Age=0'); return {};
 });
-route('GET', '/api/me', req => { const u = userOf(req); return u ? { id: u.id, name: u.name } : null; });
+route('GET', '/api/me', req => {
+  const u = userOf(req); if (u) return { role: 'director', id: u.id, name: u.name };
+  const rf = refOf(req); return rf ? { role: 'referee', id: rf.r.id, name: rf.r.name, competitionId: rf.c.id, competition: rf.c.name } : null;
+});
+route('POST', '/api/referee/login', (req, b, res) => {
+  const code = String(b.code || '').trim();
+  for (const c of db.competitions) {
+    const r = (c.referees || []).find(x => x.code === code);
+    if (r) {
+      const sid = crypto.randomBytes(24).toString('hex');
+      db.sessions[sid] = `ref:${c.id}:${r.id}`; save();
+      res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000`);
+      return { role: 'referee', id: r.id, name: r.name, competitionId: c.id };
+    }
+  }
+  bad('Codice arbitro non valido', 401);
+});
 
 route('GET', '/api/competitions', req => db.competitions.map(c => ({
   id: c.id, name: c.name, date: c.date, place: c.place, weapon: c.weapon, category: c.category,
-  athletes: c.athletes.length, status: status(c), ownerId: c.ownerId,
+  athletes: c.athletes.length, status: status(c), ownerId: c.ownerId, zone: c.zone || 'nazionale', progress: progress(c),
 })).sort((a, b) => b.date.localeCompare(a.date)));
 route('POST', '/api/competitions', (req, b) => {
   const u = need(req), name = String(b.name || '').trim();
   if (!name) bad('Inserisci il nome della gara');
   const c = { id: uid(), ownerId: u.id, name, date: b.date || '', place: String(b.place || ''), weapon: b.weapon || 'spada',
-    category: String(b.category || ''), athletes: [], pools: null, de: null };
+    category: String(b.category || ''), zone: ZONES.includes(b.zone) ? b.zone : 'nazionale', referees: [], athletes: [], pools: null, de: null };
   db.competitions.push(c); save(); return { id: c.id };
 });
 route('GET', '/api/competitions/(\\w+)', (req, b, res, [id]) => view(comp(id), req));
@@ -130,14 +172,16 @@ route('DELETE', '/api/competitions/(\\w+)/pools', (req, b, res, [id]) => {
   const c = owned(req, id); c.pools = null; c.de = null; save(); return view(c, req);
 });
 route('PUT', '/api/competitions/(\\w+)/pools/(\\d+)/bouts/(\\d+)', (req, b, res, [id, p, i]) => {
-  const c = owned(req, id);
+  const c = comp(id);
+  const pool = c.pools?.[p - 1] || bad('Girone non trovato', 404);
+  if (!canScore(req, c, pool.refereeId)) bad('Non sei l\'arbitro di questo girone', 403);
   if (c.de) bad('Il tabellone è già stato generato');
-  const bout = c.pools?.[p - 1]?.bouts[i] || bad('Assalto non trovato', 404);
+  const bout = pool.bouts[i] || bad('Assalto non trovato', 404);
   if (b.sa === null || b.sa === '' ) { bout.sa = bout.sb = null; }
   else {
     const sa = score(b.sa, 5), sb = score(b.sb, 5);
     if (sa === sb) bad('Il pareggio non è ammesso');
-    bout.sa = sa; bout.sb = sb;
+    bout.sa = sa; bout.sb = sb; bout.t = Date.now();
   }
   save(); return view(c, req);
 });
@@ -152,11 +196,62 @@ route('DELETE', '/api/competitions/(\\w+)/de', (req, b, res, [id]) => {
   const c = owned(req, id); c.de = null; save(); return view(c, req);
 });
 route('PUT', '/api/competitions/(\\w+)/de/(\\d+)/(\\d+)', (req, b, res, [id, r, i]) => {
-  const c = owned(req, id);
+  const c = comp(id);
   if (!c.de) bad('Tabellone non generato');
+  const match = c.de.rounds[r]?.[i] || bad('Assalto non trovato', 404);
+  if (!canScore(req, c, match.refereeId)) bad('Non sei l\'arbitro di questo assalto', 403);
+  if (b.forfeit) owned(req, id);
   try { if (b.forfeit) E.setDEForfeit(c.de.rounds, +r, +i, b.forfeit === 'a' ? 'a' : 'b'); else E.setDEScore(c.de.rounds, +r, +i, score(b.sa, 15), score(b.sb, 15)); } catch (e) { if (e instanceof HttpError) throw e; bad(e.message); }
+  match.t = Date.now(); save(); return view(c, req);
+});
+
+route('POST', '/api/competitions/(\\w+)/referees', (req, b, res, [id]) => {
+  const c = owned(req, id);
+  const name = String(b.name || '').trim() || bad('Inserisci il nome dell\'arbitro');
+  let code; do { code = String(crypto.randomInt(100000, 1000000)); } while (db.competitions.some(x => (x.referees || []).some(r => r.code === code)));
+  (c.referees = c.referees || []).push({ id: uid(), name, code }); save(); return view(c, req);
+});
+route('DELETE', '/api/competitions/(\\w+)/referees/(\\w+)', (req, b, res, [id, rid]) => {
+  const c = owned(req, id);
+  c.referees = (c.referees || []).filter(r => r.id !== rid);
+  (c.pools || []).forEach(p => { if (p.refereeId === rid) delete p.refereeId; });
+  (c.de?.rounds || []).flat().forEach(m => { if (m.refereeId === rid) delete m.refereeId; });
+  for (const [k, v] of Object.entries(db.sessions)) if (v === `ref:${c.id}:${rid}`) delete db.sessions[k];
   save(); return view(c, req);
 });
+const setRef = (c, target, rid) => {
+  if (rid && !(c.referees || []).some(r => r.id === rid)) bad('Arbitro non trovato', 404);
+  if (rid) target.refereeId = rid; else delete target.refereeId;
+};
+route('PUT', '/api/competitions/(\\w+)/pools/(\\d+)/referee', (req, b, res, [id, p]) => {
+  const c = owned(req, id); setRef(c, c.pools?.[p - 1] || bad('Girone non trovato', 404), b.refereeId); save(); return view(c, req);
+});
+route('PUT', '/api/competitions/(\\w+)/de/(\\d+)/(\\d+)/referee', (req, b, res, [id, r, i]) => {
+  const c = owned(req, id); setRef(c, c.de?.rounds[r]?.[i] || bad('Assalto non trovato', 404), b.refereeId); save(); return view(c, req);
+});
+// Assegnazione automatica: gironi a rotazione, poi gli assalti del tabellone non ancora giocati.
+route('POST', '/api/competitions/(\\w+)/referees/auto', (req, b, res, [id]) => {
+  const c = owned(req, id), refs = c.referees || [];
+  if (!refs.length) bad('Aggiungi prima almeno un arbitro');
+  let k = 0;
+  (c.pools || []).forEach(p => { p.refereeId = refs[k++ % refs.length].id; });
+  (c.de?.rounds || []).forEach(rd => rd.forEach(m => { if (m.a && m.b && !m.winner) m.refereeId = refs[k++ % refs.length].id; }));
+  save(); return view(c, req);
+});
+
+// Risultati recenti di tutte le gare, per la pagina principale in tempo reale.
+const roundLabel = (size, r) => { const left = size / 2 ** r; return left === 2 ? 'Finale' : left === 4 ? 'Semifinale' : left === 8 ? 'Quarti' : `Tab. dei ${left}`; };
+route('GET', '/api/live', () => {
+  const out = [];
+  for (const c of db.competitions) {
+    const nm = Object.fromEntries(c.athletes.map(a => [a.id, a.name]));
+    const rn = id => (c.referees || []).find(r => r.id === id)?.name || null;
+    (c.pools || []).forEach(p => p.bouts.forEach(b => { if (b.t && b.sa != null) out.push({ t: b.t, c: c.name, cid: c.id, zone: c.zone || 'nazionale', phase: `Girone ${p.index}`, a: nm[b.a], b: nm[b.b], sa: b.sa, sb: b.sb, ref: rn(p.refereeId) }); }));
+    (c.de?.rounds || []).forEach((rd, r) => rd.forEach(m => { if (m.t && m.winner && m.a && m.b) out.push({ t: m.t, c: c.name, cid: c.id, zone: c.zone || 'nazionale', phase: roundLabel(c.de.size, r), a: nm[m.a], b: nm[m.b], sa: m.sa, sb: m.sb, forfeit: !!m.forfeit, ref: rn(m.refereeId) }); }));
+  }
+  return out.sort((x, y) => y.t - x.t).slice(0, 15);
+});
+route('GET', '/api/zones', () => ZONES);
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
 function serveStatic(req, res) {
