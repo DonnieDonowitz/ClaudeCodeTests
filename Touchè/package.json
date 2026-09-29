@@ -1,1 +1,1 @@
-{ "name": "touche", "version": "0.1.0", "private": true, "scripts": { "start": "node server.js", "seed": "node scripts/seed.js", "test": "node --test test/engine.test.js" } }
+{ "name": "touche", "version": "0.1.0", "private": true, "scripts": { "start": "node server.js", "seed": "node scripts/seed.js", "test": "node --test test/engine.test.js test/ranking.test.js" } }

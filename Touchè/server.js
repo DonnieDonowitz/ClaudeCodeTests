@@ -1,14 +1,16 @@
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const E = require('./lib/engine');
+const R = require('./lib/ranking');
 
 const PORT = process.env.PORT || 3000;
 const INVITE = process.env.TOUCHE_INVITE || 'touche';
 const DB_FILE = path.join(__dirname, 'data', 'db.json');
 const PUBLIC = path.join(__dirname, 'public');
 
-let db = { users: [], sessions: {}, competitions: [] };
+let db = { users: [], sessions: {}, competitions: [], rankings: {} };
 try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch {}
+db.rankings = db.rankings || {};
 function save() {
   fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
   fs.writeFileSync(DB_FILE + '.tmp', JSON.stringify(db));
@@ -51,7 +53,16 @@ function owned(req, id) {
   if (c.ownerId !== u.id) bad('Non sei il direttore di questa gara', 403);
   return c;
 }
-const active = c => c.athletes.filter(a => !a.absent);
+const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master'];
+const rankKey = c => [c.category, c.weapon, c.gender || 'M'].map(x => String(x).toLowerCase().trim()).join('|');
+const rk = a => a.rank ?? R.UNRANKED;
+// Atleti presenti ordinati per ranking (i senza ranking, 9999, in ordine di sorteggio).
+const active = c => c.athletes.filter(a => !a.absent).sort((x, y) => rk(x) - rk(y) || (c.lots?.[x.id] ?? 0) - (c.lots?.[y.id] ?? 0));
+function applyRanking(c) {
+  const map = db.rankings[rankKey(c)]?.map;
+  for (const a of c.athletes) if (!a.manual) a.rank = map ? R.rankOf(map, a.name) : null;
+  c.athletes.sort((x, y) => rk(x) - rk(y));
+}
 function progress(c) {
   const bouts = (c.pools || []).flatMap(p => p.bouts);
   const de = (c.de?.rounds || []).flat().filter(m => m.a && m.b);
@@ -64,6 +75,8 @@ function view(c, req) {
   const u = userOf(req);
   const rf = refOf(req);
   const out = { ...c, zone: c.zone || 'nazionale', status: status(c), owner: db.users.find(x => x.id === c.ownerId)?.name, canEdit: !!u && u.id === c.ownerId };
+  const ri = db.rankings[rankKey(c)];
+  out.rankingInfo = ri ? { updated: ri.updated, count: ri.count, file: ri.file } : null;
   out.referee = rf && rf.c.id === c.id ? { id: rf.r.id, name: rf.r.name } : null;
   if (!out.canEdit) out.referees = (c.referees || []).map(r => ({ id: r.id, name: r.name }));
   if (c.pools) out.ranking = E.ranking(c.pools, active(c), c.lots);
@@ -126,7 +139,7 @@ route('POST', '/api/competitions', (req, b) => {
   const u = need(req), name = String(b.name || '').trim();
   if (!name) bad('Inserisci il nome della gara');
   const c = { id: uid(), ownerId: u.id, name, date: b.date || '', place: String(b.place || ''), weapon: b.weapon || 'spada',
-    category: String(b.category || ''), zone: ZONES.includes(b.zone) ? b.zone : 'nazionale', referees: [], athletes: [], pools: null, de: null };
+    category: String(b.category || ''), gender: b.gender === 'F' ? 'F' : 'M', zone: ZONES.includes(b.zone) ? b.zone : 'nazionale', referees: [], athletes: [], pools: null, de: null };
   db.competitions.push(c); save(); return { id: c.id };
 });
 route('GET', '/api/competitions/(\\w+)', (req, b, res, [id]) => view(comp(id), req));
@@ -139,8 +152,13 @@ route('POST', '/api/competitions/(\\w+)/athletes', (req, b, res, [id]) => {
   const c = owned(req, id);
   if (c.pools) bad('I gironi sono già stati generati');
   const lines = String(b.text || '').split('\n').map(s => s.trim()).filter(Boolean);
-  for (const l of lines) { const [name, club] = l.split(/[,;\t]/).map(s => s.trim()); c.athletes.push({ id: uid(), name, club: club || '' }); }
-  save(); return view(c, req);
+  for (const l of lines) {
+    const [name, club, r] = l.split(/[,;\t]/).map(s => s.trim());
+    const a = { id: uid(), name, club: club || '', rank: null };
+    if (/^\d+$/.test(r || '')) { a.rank = +r; a.manual = true; }
+    c.athletes.push(a);
+  }
+  applyRanking(c); save(); return view(c, req);
 });
 route('DELETE', '/api/competitions/(\\w+)/athletes/(\\w+)', (req, b, res, [id, aid]) => {
   const c = owned(req, id);
@@ -153,19 +171,21 @@ route('POST', '/api/competitions/(\\w+)/athletes/(\\w+)/absent', (req, b, res, [
   const a = c.athletes.find(x => x.id === aid) || bad('Atleta non trovato', 404);
   a.absent = !a.absent; save(); return view(c, req);
 });
-route('POST', '/api/competitions/(\\w+)/athletes/(\\w+)/move', (req, b, res, [id, aid]) => {
+route('POST', '/api/competitions/(\\w+)/ranking', (req, b, res, [id]) => {
   const c = owned(req, id);
   if (c.pools) bad('I gironi sono già stati generati');
-  const i = c.athletes.findIndex(a => a.id === aid), j = i + (b.dir < 0 ? -1 : 1);
-  if (i < 0 || j < 0 || j >= c.athletes.length) return view(c, req);
-  [c.athletes[i], c.athletes[j]] = [c.athletes[j], c.athletes[i]]; save(); return view(c, req);
+  let map;
+  try { map = R.parseRankingFile(Buffer.from(String(b.file || ''), 'base64'), String(b.filename || '')); } catch (e) { bad(e.message); }
+  db.rankings[rankKey(c)] = { updated: Date.now(), count: Object.keys(map).length, file: String(b.filename || ''), map };
+  db.competitions.filter(x => !x.pools && rankKey(x) === rankKey(c)).forEach(applyRanking);
+  save(); return view(c, req);
 });
 
 route('POST', '/api/competitions/(\\w+)/pools', (req, b, res, [id]) => {
   const c = owned(req, id);
+  c.lots = Object.fromEntries(c.athletes.map(a => [a.id, Math.random()]));
   const act = active(c);
   if (act.length < 4) bad('Servono almeno 4 atleti presenti');
-  c.lots = Object.fromEntries(act.map(a => [a.id, Math.random()]));
   c.pools = E.buildPools(act, Number(b.poolCount) || 0); c.de = null; save(); return view(c, req);
 });
 route('DELETE', '/api/competitions/(\\w+)/pools', (req, b, res, [id]) => {
@@ -251,6 +271,7 @@ route('GET', '/api/live', () => {
   }
   return out.sort((x, y) => y.t - x.t).slice(0, 15);
 });
+route('GET', '/api/categories', () => CATEGORIES);
 route('GET', '/api/zones', () => ZONES);
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
@@ -267,7 +288,7 @@ http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (!url.pathname.startsWith('/api/')) return serveStatic(req, res);
   let raw = '';
-  req.on('data', d => { raw += d; if (raw.length > 1e6) req.destroy(); });
+  req.on('data', d => { raw += d; if (raw.length > 12e6) req.destroy(); });
   req.on('end', () => {
     try {
       for (const [m, re, fn] of routes) {

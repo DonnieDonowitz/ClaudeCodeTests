@@ -3,6 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const STATUS = { iscrizioni: 'Iscrizioni', gironi: 'Gironi', tabellone: 'Tabellone', concluso: 'Concluso' };
 const REGIONS = { 'abruzzo': 'Abruzzo', 'basilicata': 'Basilicata', 'calabria': 'Calabria', 'campania': 'Campania', 'emilia-romagna': 'Emilia-Romagna', 'friuli-venezia-giulia': 'Friuli-Venezia Giulia', 'lazio': 'Lazio', 'liguria': 'Liguria', 'lombardia': 'Lombardia', 'marche': 'Marche', 'molise': 'Molise', 'piemonte': 'Piemonte', 'puglia': 'Puglia', 'sardegna': 'Sardegna', 'sicilia': 'Sicilia', 'toscana': 'Toscana', 'trentino-alto-adige': 'Trentino-Alto Adige', 'umbria': 'Umbria', 'valle-d-aosta': 'Valle d\'Aosta', 'veneto': 'Veneto' };
+const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master'];
 const ZONE = { nazionale: 'Nazionali', master: 'Master', ...REGIONS };
 let me = null, timer = null, tab = 'atleti';
 
@@ -63,7 +64,8 @@ function newView() {
   $('#app').innerHTML = `<h1>Nuova gara</h1><div class="card"><form id="f" class="grid">
   <div><label>Nome</label><input name="name" required></div><div><label>Data</label><input type="date" name="date"></div>
   <div><label>Zona</label><select name="zone">${Object.entries(ZONE).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></div>
-  <div><label>Luogo</label><input name="place"></div><div><label>Categoria</label><input name="category" placeholder="es. Assoluti"></div>
+  <div><label>Luogo</label><input name="place"></div><div><label>Categoria</label><select name="category">${CATEGORIES.map(x => `<option>${x}</option>`).join('')}</select></div>
+  <div><label>Sesso</label><select name="gender"><option value="M">Maschile</option><option value="F">Femminile</option></select></div>
   <div><label>Arma</label><select name="weapon"><option>spada</option><option>fioretto</option><option>sciabola</option></select></div>
   <div style="align-self:end"><button class="primary">Crea</button></div></form></div>`;
   $('#f').onsubmit = act(async e => { e.preventDefault(); const r = await api('POST', '/competitions', Object.fromEntries(new FormData(e.target))); location.hash = '#/c/' + r.id; });
@@ -72,7 +74,7 @@ function newView() {
 /* ---------- Gara ---------- */
 async function compView(id, t, poll) {
   const c = await api('GET', '/competitions/' + id);
-  if (poll && (document.activeElement?.tagName === 'SELECT' || document.querySelector('dialog[open]'))) return;
+  if (poll && (document.activeElement?.matches('textarea,select,input:not([data-live])') || document.querySelector('dialog[open]'))) return;
   tab = t || tab;
   const avail = ['atleti', ...(c.pools ? ['gironi', 'classifica'] : []), ...(c.de ? ['tabellone'] : []), ...(c.final?.length ? ['finale'] : []), ...(c.canEdit ? ['arbitri'] : [])];
   if (!avail.includes(tab)) tab = avail.filter(x => x !== 'arbitri').at(-1);
@@ -84,7 +86,7 @@ async function compView(id, t, poll) {
   const mineP = c.referee ? (c.pools || []).filter(p => p.refereeId === c.referee.id).length : 0;
   const mineM = c.referee ? (c.de?.rounds || []).flat().filter(m => m.refereeId === c.referee.id && !m.winner).length : 0;
   $('#app').innerHTML = `<div class="row2" style="justify-content:space-between"><div><h1>${esc(c.name)}</h1>
-    <div class="mute">${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} · ${esc(c.place)} · ${esc(c.date)} · direttore: ${esc(c.owner)}</div></div>
+    <div class="mute">${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender || 'M')} · ${esc(c.place)} · ${esc(c.date)} · direttore: ${esc(c.owner)}</div></div>
     <span class="badge ${c.status}">${STATUS[c.status]}</span></div>
     ${c.referee ? `<div class="banner">Ciao <b>${esc(c.referee.name)}</b>: ${mineP} gironi e ${mineM} assalti del tabellone ti aspettano. Tocca una cella della griglia (o un punteggio nel tabellone) per inserire il risultato.</div>` : ''}
     <div class="tabs">${avail.map(x => `<a href="#/c/${id}/${x}" class="${x === tab ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</a>`).join('')}</div>${body}`;
@@ -93,11 +95,14 @@ async function compView(id, t, poll) {
 }
 
 function athletesTab(c) {
-  const e = c.canEdit && !c.pools;
-  return `<div class="card"><table><tr><th>#</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
-    c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td class="l">${esc(a.name)}</td><td class="l">${esc(a.club)}</td>${e ? `<td><button class="small" data-mv="${a.id}" data-d="-1">↑</button> <button class="small" data-mv="${a.id}" data-d="1">↓</button> <button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
-    `</table>${c.athletes.length ? '' : '<p class="mute">Nessun iscritto.</p>'}</div>` +
-    (e ? `<div class="card"><label>Aggiungi atleti — una riga ciascuno: Cognome Nome, Società. L'ordine è il ranking (primo = testa di serie 1)</label>
+  const e = c.canEdit && !c.pools, ri = c.rankingInfo;
+  return `<div class="card"><table><tr><th>#</th><th>Ranking</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
+    c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l">${esc(a.name)}</td><td class="l">${esc(a.club)}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
+    `</table>${c.athletes.length ? '' : '<p class="mute">Nessun iscritto.</p>'}<p class="hint">Gli atleti sono ordinati per ranking; senza ranking valgono 9999 e vengono sorteggiati.</p></div>` +
+    (e ? `<div class="card"><label>Ranking Federscherma · ${esc(c.category)} · ${esc(c.weapon)} · ${c.gender === 'F' ? 'femminile' : 'maschile'}</label>
+      <p class="mute">${ri ? `Caricato: ${ri.count} atleti da <b>${esc(ri.file)}</b> (${new Date(ri.updated).toLocaleDateString('it-IT')}). Carica di nuovo il file quando il ranking viene aggiornato.` : 'Nessun ranking caricato. Scarica il file Excel dal sito della Federscherma e caricalo qui.'}</p>
+      <input type="file" id="rkfile" accept=".xlsx,.csv"></div>
+      <div class="card"><label>Aggiungi atleti — una riga ciascuno: Cognome Nome, Società (facoltativo: , ranking manuale)</label>
       <textarea id="ath" rows="5"></textarea><div class="row2" style="margin-top:8px"><button id="addAth">Aggiungi</button></div></div>
       <div class="card row2"><label style="margin:0">Numero gironi</label><input id="pc" type="number" min="1" placeholder="auto" style="width:90px">
       <button class="primary" id="genPools">Genera gironi</button></div>` : '') +
@@ -118,7 +123,7 @@ function poolsTab(c, n) {
       const b = p.bouts.find(x => (x.a === A[i] && x.b === A[j]) || (x.a === A[j] && x.b === A[i]));
       if (!b || b.sa == null) return { t: '', v: false };
       const own = b.a === A[i] ? b.sa : b.sb, opp = b.a === A[i] ? b.sb : b.sa;
-      return { t: own > opp ? 'V' + own : String(own), v: own > opp };
+      return { t: own > opp ? (own === 5 ? 'V' : 'V' + own) : String(own), v: own > opp };
     };
     const rows = A.map((a, i) => `<tr><td class="n">${i + 1}</td><td class="nm">${n(a)}<small>${esc(club[a])}</small></td>${A.map((_, j) => {
       if (i === j) return '<td class="x"></td>';
@@ -186,7 +191,7 @@ function openBout(c, pi, A, B) {
   d.innerHTML = `<h3>Girone ${pi} · assalto</h3>
     <div class="sc"><span>${esc(nm(b.a))}</span><input id="sa" inputmode="numeric" maxlength="1" value="${b.sa ?? ''}"></div>
     <div class="sc"><span>${esc(nm(b.b))}</span><input id="sb" inputmode="numeric" maxlength="1" value="${b.sb ?? ''}"></div>
-    <p class="hint">Stoccate da 0 a 5. Il vincitore è chi ne ha di più.</p>
+    <p class="hint">Stoccate da 0 a 5. Se il vincitore arriva a 5 in griglia compare solo «V»; se vince con meno, «V» e il numero.</p>
     <div class="row2"><button id="no">Annulla</button>${b.sa != null ? '<button class="danger" id="clr">Azzera</button>' : ''}<button class="primary" id="ok">Salva</button></div>`;
   document.body.appendChild(d); d.showModal(); d.querySelector('#sa').select();
   d.onclose = () => d.remove();
@@ -213,13 +218,19 @@ function bind(c) {
   all('[data-rmref]', b => b.onclick = act(async () => { if (confirm('Rimuovere l\'arbitro?')) { await api('DELETE', `/competitions/${c.id}/referees/${b.dataset.rmref}`); render(); } }));
   all('[data-rm]', b => b.onclick = act(async () => { await api('DELETE', `/competitions/${c.id}/athletes/${b.dataset.rm}`); render(); }));
   all('[data-ab]', b => b.onclick = act(async () => { await api('POST', `/competitions/${c.id}/athletes/${b.dataset.ab}/absent`); render(); }));
-  all('[data-mv]', b => b.onclick = act(async () => { await api('POST', `/competitions/${c.id}/athletes/${b.dataset.mv}/move`, { dir: +b.dataset.d }); render(); }));
   all('[data-ff]', b => b.onclick = act(async () => {
     if (!confirm('Assegnare la vittoria a tavolino a questo atleta?')) return;
     await api('PUT', `/competitions/${c.id}/de/${b.dataset.ff}`, { forfeit: b.dataset.side }); render();
   }));
   all('select[data-refpool]', s => s.onchange = act(async () => { await api('PUT', `/competitions/${c.id}/pools/${s.dataset.refpool}/referee`, { refereeId: s.value }); render(); }));
   all('select[data-refde]', s => s.onchange = act(async () => { await api('PUT', `/competitions/${c.id}/de/${s.dataset.refde}/referee`, { refereeId: s.value }); render(); }));
+  const rf = $('#rkfile');
+  if (rf) rf.onchange = act(async () => {
+    const f = rf.files[0]; if (!f) return;
+    const u8 = new Uint8Array(await f.arrayBuffer()); let bin = '';
+    for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+    await api('POST', `/competitions/${c.id}/ranking`, { file: btoa(bin), filename: f.name }); render();
+  });
   all('td.e', td => td.onclick = () => openBout(c, +td.dataset.p, td.dataset.a, td.dataset.b));
   // Tabellone: il punteggio parte quando entrambi i campi sono compilati.
   all('input[data-live]', inp => inp.onchange = act(async () => {
