@@ -127,3 +127,5 @@ dialog .row2{margin-top:16px;justify-content:flex-end}
 .pool-h .ref b{font:600 15px var(--font)}
 input[type=file]{font-size:15px;color:var(--ink2)}
 input[type=file]::file-selector-button{font:600 15px var(--font);margin-right:12px;padding:8px 16px;border:0;border-radius:10px;background:var(--ink);color:var(--gold-b);cursor:pointer}
+.seed{display:inline-block;width:28px;padding:0;margin-right:8px;border-radius:6px;background:var(--fill);color:var(--gold);font:700 12px/20px var(--font);font-style:normal;text-align:center;font-variant-numeric:tabular-nums}
+.match .row.w .seed{background:rgba(184,134,11,.18)}

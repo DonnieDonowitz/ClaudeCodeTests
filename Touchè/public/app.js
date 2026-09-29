@@ -148,9 +148,12 @@ function roundName(size, r) {
   const left = size / 2 ** r;
   return left === 2 ? 'Finale' : left === 4 ? 'Semifinali' : left === 8 ? 'Quarti' : `Tabellone dei ${left}`;
 }
-function bracketTab(c, n) {
+function bracketTab(c, n0) {
   const { size, rounds } = c.de, champ = rounds.at(-1)[0].winner;
-  return (champ ? `<p class="podium">🏆 ${n(champ)}</p>` : '') + `<div class="bracket">` + rounds.map((rd, r) =>
+  const pos = Object.fromEntries(c.ranking.map(r => [r.id, r.rank]));
+  // Posizione dopo i gironi davanti al nome.
+  const n = id => (id ? `<i class="seed" title="Posizione dopo i gironi">${pos[id] ?? ''}</i>` : '') + n0(id);
+  return (champ ? `<p class="podium">🏆 ${n0(champ)}</p>` : '') + `<div class="bracket">` + rounds.map((rd, r) =>
     `<div class="round"><h3>${roundName(size, r)}</h3>${rd.map((m, i) => {
       if (r === 0 && (!m.a || !m.b)) return `<div class="match"><div class="row ${m.a ? 'w' : ''}"><span>${n(m.a || m.b)}</span></div><div class="row mute">Bye</div></div>`;
       const mine = c.referee && m.refereeId === c.referee.id, ed = m.a && m.b && (c.canEdit || mine);

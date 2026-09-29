@@ -12,11 +12,26 @@ test('gironi bilanciati e società separate', () => {
   assert.deepEqual(p.map(x => x.athletes.length).sort(), [6, 7, 7]);
   assert.equal(new Set(p.flatMap(x => x.athletes)).size, 20);
 });
-test('seedOrder 8', () => assert.deepEqual(E.seedOrder(8), [1, 8, 4, 5, 2, 7, 3, 6]));
+test('seedOrder 8 e 16', () => {
+  assert.deepEqual(E.seedOrder(8), [1, 8, 5, 4, 3, 6, 7, 2]);
+  assert.deepEqual(E.seedOrder(16), [1, 16, 9, 8, 5, 12, 13, 4, 3, 14, 11, 6, 7, 10, 15, 2]);
+});
+test('tabellone: somme e posizioni delle teste di serie', () => {
+  for (const size of [4, 8, 16, 32, 64, 128]) {
+    const o = E.seedOrder(size);
+    for (let i = 0; i < size; i += 2) assert.equal(o[i] + o[i + 1], size + 1);          // 1v32, 2v31, ...
+    assert.equal(o[0], 1); assert.equal(o[size - 1], 2);                                 // 1 in alto, 2 in basso
+    assert.equal(o[size / 2], 3);                                                        // 3 in cima alla seconda metà
+    assert.equal(o[size / 2 - 1] === 4 || o[size / 2 - 2] === 4 || size === 4, true);    // 4 in fondo alla prima metà
+    assert.equal(new Set(o).size, size);
+  }
+  const o = E.seedOrder(16);
+  assert.equal(o.indexOf(4) < 8 && o.indexOf(4) >= 6, true);                              // 4 nel quarto in basso della prima metà
+});
 test('tabellone con bye e avanzamento', () => {
   const b = E.buildBracket(['1', '2', '3', '4', '5', '6']);
   assert.equal(b.size, 8);
-  assert.equal(b.rounds[1][0].a, '1'); assert.equal(b.rounds[1][1].a, '2');
+  assert.equal(b.rounds[1][0].a, '1'); assert.equal(b.rounds[1][1].b, '2');
   E.setDEScore(b.rounds, 0, 1, 15, 3);
   assert.equal(b.rounds[1][0].b, '4');
   E.setDEScore(b.rounds, 1, 0, 15, 10);

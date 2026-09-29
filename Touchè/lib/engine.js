@@ -85,9 +85,15 @@ function ranking(pools, athletes, lots = {}) {
     .map((s, i, arr) => ({ ...s, rank: i + 1, tie: [arr[i - 1], arr[i + 1]].some(o => o && o.ratio === s.ratio && o.ind === s.ind && o.ts === s.ts) }));
 }
 
+// Posizioni delle teste di serie nel tabellone (dall'alto in basso). Ogni raddoppio sostituisce la
+// testa di serie s con la coppia (s, 2m+1-s), alternando l'ordine: 1 in alto, 2 in basso, 3 in cima alla
+// seconda metà, 4 in fondo alla prima, ecc. Ogni assalto del primo turno somma sempre size+1.
 function seedOrder(size) {
   let s = [1, 2];
-  while (s.length < size) { const n = s.length * 2; s = s.flatMap(x => [x, n + 1 - x]); }
+  while (s.length < size) {
+    const total = s.length * 2 + 1;
+    s = s.flatMap((x, i) => (i % 2 === 0 ? [x, total - x] : [total - x, x]));
+  }
   return s;
 }
 
@@ -98,7 +104,8 @@ function buildBracket(rankedIds) {
   const order = seedOrder(size);
   const first = [];
   for (let i = 0; i < size; i += 2) {
-    const a = rankedIds[order[i] - 1] ?? null, b = rankedIds[order[i + 1] - 1] ?? null;
+    const [x, y] = [order[i], order[i + 1]].sort((p, q) => p - q); // la testa di serie migliore in alto
+    const a = rankedIds[x - 1] ?? null, b = rankedIds[y - 1] ?? null;
     first.push({ a, b, sa: null, sb: null, winner: null });
   }
   const rounds = [first];
