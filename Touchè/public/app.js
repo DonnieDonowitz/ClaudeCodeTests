@@ -3,7 +3,9 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const STATUS = { iscrizioni: 'Iscrizioni', gironi: 'Gironi', tabellone: 'Tabellone', concluso: 'Concluso' };
 const REGIONS = { 'abruzzo': 'Abruzzo', 'basilicata': 'Basilicata', 'calabria': 'Calabria', 'campania': 'Campania', 'emilia-romagna': 'Emilia-Romagna', 'friuli-venezia-giulia': 'Friuli-Venezia Giulia', 'lazio': 'Lazio', 'liguria': 'Liguria', 'lombardia': 'Lombardia', 'marche': 'Marche', 'molise': 'Molise', 'piemonte': 'Piemonte', 'puglia': 'Puglia', 'sardegna': 'Sardegna', 'sicilia': 'Sicilia', 'toscana': 'Toscana', 'trentino-alto-adige': 'Trentino-Alto Adige', 'umbria': 'Umbria', 'valle-d-aosta': 'Valle d\'Aosta', 'veneto': 'Veneto' };
-const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master'];
+const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master', 'Bambini', 'Giovanissimi', 'Ragazzi', 'Allievi', 'Master Cat. 0', 'Master Cat. 1', 'Master Cat. 2', 'Master Cat. 3', 'Master Cat. 4'];
+const cslug = x => String(x).toLowerCase().trim().replace(/[\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+const catLabel = x => CATEGORIES.find(c => cslug(c) === x) || x;
 const ZONE = { nazionale: 'Nazionali', master: 'Master', ...REGIONS };
 const ABBR = { nazionale: 'FIS', master: 'AMIS', 'emilia-romagna': 'EMR', 'friuli-venezia-giulia': 'FVG', 'trentino-alto-adige': 'TAA', 'valle-d-aosta': 'VDA' };
 let me = null, timer = null, tab = 'atleti', HL = '', LOGOS = {};
@@ -366,7 +368,7 @@ async function athleteView(key) {
   const a = await api('GET', '/athletes/' + encodeURIComponent(key));
   const live = a.competitions.filter(c => c.live), past = a.competitions.filter(c => !c.live);
   const rk = a.rankings.length ? `<div class="card"><table><tr><th class="l">Arma</th><th class="l">Categoria</th><th>Sesso</th><th>Ranking</th></tr>${a.rankings.map(r =>
-    `<tr><td class="l">${esc(WEAPON(r.weapon))}</td><td class="l">${esc(CATEGORIES.find(x => x.toLowerCase() === r.category) || r.category)}</td><td>${r.gender === 'F' ? 'F' : 'M'}</td><td><b>${r.pos}°</b></td></tr>`).join('')}</table>
+    `<tr><td class="l">${esc(WEAPON(r.weapon))}</td><td class="l">${esc(catLabel(r.category))}</td><td>${r.gender === 'F' ? 'F' : 'M'}</td><td><b>${r.pos}°</b></td></tr>`).join('')}</table>
     <p class="hint">Dai ranking Federscherma caricati (${[...new Set(a.rankings.map(r => r.file).filter(Boolean))].map(esc).join(', ') || 'file manuale'}).</p></div>`
     : '<p class="mute">Nessun ranking disponibile per questo schermidore nei file caricati.</p>';
   $('#app').innerHTML = `<h1>${esc(a.name)}</h1><div class="mute">${a.club ? `Società: <a href="#/s/${encodeURIComponent(wkey0(a.club))}">${esc(a.club)}</a>` : 'Società non indicata'}</div>
@@ -378,7 +380,7 @@ async function clubView(key) {
   key = decodeURIComponent(key); HLNEXT = '';
   const c = await api('GET', '/clubs/' + encodeURIComponent(key));
   $('#app').innerHTML = `<h1>${esc(c.name)}</h1><p class="mute">${c.athletes.length} ${c.athletes.length === 1 ? 'schermidore' : 'schermidori'}</p>
-    <div class="list">${c.athletes.map(a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${a.rankings.map(r => `${esc(WEAPON(r.weapon))} ${esc(CATEGORIES.find(x => x.toLowerCase() === r.category) || r.category)} ${r.gender}: ${r.pos}°`).join(' · ') || `${a.count} ${a.count === 1 ? 'gara' : 'gare'}`}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`).join('')}</div>`;
+    <div class="list">${c.athletes.map(a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${a.rankings.map(r => `${esc(WEAPON(r.weapon))} ${esc(catLabel(r.category))} ${r.gender}: ${r.pos}°`).join(' · ') || `${a.count} ${a.count === 1 ? 'gara' : 'gare'}`}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`).join('')}</div>`;
 }
 
 /* Barra di ricerca nell'intestazione: suggerimenti al volo, Invio apre tutti i risultati. */

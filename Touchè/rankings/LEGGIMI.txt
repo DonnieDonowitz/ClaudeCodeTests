@@ -1,12 +1,15 @@
-Metti qui i file dei ranking Federscherma (.xlsx o .csv) e lancia:   npm run rankings
+Metti qui i file dei ranking Federscherma (.xlsx, .xls, .csv, oppure .zip che li contengono) e lancia:   npm run rankings
 
-Arma, categoria e sesso vengono dedotti dal nome del foglio, dal nome del file o dal titolo in testa al foglio
-(es. "Spada Maschile Assoluti.xlsx"). Se non si riesce, crea rankings/manifest.json:
+Arma, categoria e sesso vengono dedotti dal nome del foglio (FF, FM, SPF, SPM, SCF, SCM, "… cat. N" per i master),
+dal nome del file e dal titolo sopra la tabella. Categorie riconosciute: assoluti, giovani, under-23, cadetti, juniores,
+under-14, master (+ master-cat-0…4), bambini, giovanissimi, ragazzi, allievi. La lista combinata "Ragazzi+Allievi" viene ignorata.
+
+Se un foglio non si riesce a classificare viene segnalato: crea allora rankings/manifest.json
 
   { "ranking_xyz.xlsx": { "weapon": "spada", "category": "assoluti", "gender": "M" },
     "altro.xlsx#Foglio2": { "weapon": "fioretto", "category": "under-14", "gender": "F" } }
 
-Valori: weapon = fioretto | spada | sciabola; gender = M | F;
-category = giovani | assoluti | under-23 | cadetti | juniores | under-14 | master.
+Valori: weapon = fioretto | spada | sciabola; gender = M | F.
 
 Per aggiornare i ranking: sostituisci i file e rilancia il comando (i file invariati vengono saltati).
+Opzioni: --dry-run (solo prova), --force (reimporta tutto), --dir <cartella>, --season 2026/27.

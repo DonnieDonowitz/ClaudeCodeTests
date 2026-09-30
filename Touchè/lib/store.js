@@ -8,7 +8,10 @@ const ROLES = ['admin', 'regional', 'director', 'referee'];
 const SESSION_DAYS = 30;
 const uid = () => crypto.randomBytes(6).toString('hex');
 const hash = (pw, salt) => crypto.scryptSync(pw, salt, 32).toString('hex');
-const rankKey = (category, weapon, gender) => [category, weapon, gender || 'M'].map(x => String(x).toLowerCase().trim()).join('|');
+const slug = x => String(x).toLowerCase().trim().replace(/[\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+// I file Federscherma scrivono i nomi in maiuscolo: per la visualizzazione diventano "Cognome Nome".
+const pretty = n => n === n.toUpperCase() ? n.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : n;
+const rankKey = (category, weapon, gender) => [slug(category), slug(weapon), slug(gender || 'M')].join('|');
 
 function open(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -111,11 +114,11 @@ function open(file) {
       const old = new Map(q('SELECT name_key, pos FROM ranking_entries WHERE list_key=?').all(key).map(r => [r.name_key, r.pos]));
       q('DELETE FROM ranking_lists WHERE key=?').run(key);
       q('INSERT INTO ranking_lists(key,category,weapon,gender,season,file,file_hash,updated,count) VALUES(?,?,?,?,?,?,?,?,?)')
-        .run(key, String(category).toLowerCase(), String(weapon).toLowerCase(), g, season, file, fh, Date.now(), entries.length);
+        .run(key, slug(category), slug(weapon), g, season, file, fh, Date.now(), entries.length);
       const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos) VALUES(?,?,?,?,?,?)');
       let added = 0, changed = 0;
       for (const e of entries) {
-        ins.run(key, e.key, e.name, e.club || '', R.norm(e.club || ''), e.pos);
+        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos);
         if (!old.has(e.key)) added++; else if (old.get(e.key) !== e.pos) changed++;
       }
       const seen = new Set(entries.map(e => e.key));
@@ -157,4 +160,4 @@ function open(file) {
   return S;
 }
 
-module.exports = { open, ROLES, rankKey, hash, uid };
+module.exports = { open, ROLES, rankKey, slug, hash, uid };

@@ -1,6 +1,7 @@
 'use strict';
 // Lettura del ranking Federscherma (.xlsx o .csv) senza dipendenze esterne.
 const zlib = require('zlib');
+const { xlsSheets } = require('./xls');
 
 const UNRANKED = 9999;
 
@@ -18,7 +19,7 @@ function unzip(buf) {
     const name = buf.toString('utf8', p + 46, p + 46 + nlen);
     const start = off + 30 + buf.readUInt16LE(off + 26) + buf.readUInt16LE(off + 28);
     const raw = buf.subarray(start, start + csize);
-    files[name] = () => (method === 0 ? raw : zlib.inflateRawSync(raw)).toString('utf8');
+    files[name] = asBuf => { const d = method === 0 ? raw : zlib.inflateRawSync(raw); return asBuf === true ? d : d.toString('utf8'); };
     p += 46 + nlen + elen + clen;
   }
   return files;
@@ -114,10 +115,29 @@ function parseRankingFile(buf, filename = '') {
   return best;
 }
 
-// Da un file completo (.xlsx/.csv) a un elenco di liste [{ name, entries, title }], una per foglio.
+// Da un file (.xlsx, .xls, .csv o uno .zip che ne contiene) a un elenco di fogli [{ source, name, rows }].
+function loadSheets(buf, filename = '') {
+  if (/\.csv$/i.test(filename)) return [{ source: '', name: '', rows: csvRows(buf.toString('utf8')) }];
+  if (/\.xls$/i.test(filename)) return xlsSheets(buf).map(s => ({ source: '', ...s }));
+  if (/\.zip$/i.test(filename)) {
+    const z = unzip(buf), out = [];
+    for (const name of Object.keys(z).sort()) {
+      if (/\/$/.test(name) || /(^|\/)(__MACOSX|\._)/.test(name) || !/\.(xlsx|xls|csv)$/i.test(name)) continue;
+      const base = name.split('/').pop();
+      out.push(...loadSheets(z[name](true), base).map(sh => ({ ...sh, source: base })));
+    }
+    return out;
+  }
+  return xlsxNamedSheets(buf).map(s => ({ source: '', ...s }));
+}
+// Il titolo è il testo sopra l'intestazione della tabella (la riga che inizia con "Rank"/"Pos"/"Cat.").
+const titleOf = rows => {
+  const h = rows.findIndex(r => (r || []).some(c => /^(rank|pos\.?|posizione|cat\.?)$/i.test(String(c ?? '').trim())));
+  return rows.slice(0, h > 0 ? h : 6).flat().filter(Boolean).join(' ');
+};
+// Elenchi di ranking: uno per foglio che contiene una tabella riconoscibile.
 function parseRankingLists(buf, filename = '') {
-  if (/\.csv$/i.test(filename)) { const rows = csvRows(buf.toString('utf8')); return [{ name: '', entries: extractEntries(rows), title: rows.slice(0, 4).flat().join(' ') }]; }
-  return xlsxNamedSheets(buf).map(s => ({ name: s.name, entries: extractEntries(s.rows), title: s.rows.slice(0, 6).flat().join(' ') })).filter(l => l.entries.length);
+  return loadSheets(buf, filename).map(sh => ({ source: sh.source, name: sh.name, entries: extractEntries(sh.rows), title: titleOf(sh.rows) })).filter(l => l.entries.length);
 }
 
 const rankOf = (map, name) => map?.[nameKey(name)] ?? null;

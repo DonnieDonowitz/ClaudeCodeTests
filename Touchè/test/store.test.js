@@ -45,3 +45,20 @@ test('importDir: importa, salta gli invariati, segnala i file non classificabili
   assert.deepEqual(rep.map(r => r.status).sort(), ['importato', 'invariato']);
   assert.equal(s.rankOf('master|fioretto|f', 'Rossi Marco'), 1);
 });
+
+test('lettura .xls (BIFF8) e .zip, nomi in maiuscolo resi leggibili', () => {
+  const xls = path.join(__dirname, '..', 'rankings', 'Ranking-Master-2026-27-INIZIALE-v1.xls');
+  if (!fs.existsSync(xls)) return;
+  const lists = R.parseRankingLists(fs.readFileSync(xls), 'm.xls');
+  const spm = lists.find(l => l.name === 'SPM cat. 2');
+  assert.equal(spm.entries[0].name, 'PIRANI CLAUDIO'); assert.equal(spm.entries[0].pos, 1); assert.equal(spm.entries[0].club, 'GEPOM');
+  const s = open(':memory:'); s.importList({ category: 'Master Cat. 2', weapon: 'spada', gender: 'M', entries: spm.entries });
+  assert.equal(s.rankedAthletes(['pirani'])[0].name, 'Pirani Claudio');
+  assert.equal(s.rankOf('master-cat-2|spada|m', 'Claudio Pirani'), 1);
+});
+test('deduzione dai nomi dei fogli Federscherma', () => {
+  assert.deepEqual(inferMeta('SPF cat. 3', '', 'RANKING MASTER 2026-27 SPADA FEMMINILE'), { weapon: 'spada', gender: 'F', category: 'master-cat-3' });
+  assert.equal(inferMeta('FM C', 'RC-2026.xlsx', 'RANKING CADETTI FIORETTO MASCHILE').category, 'cadetti');
+  assert.equal(inferMeta('ff', 'RGPG_ALLIEVE-I.xls', 'RANKING G.P.G. ALLIEVE FIORETTO FEMMINILE').category, 'allievi');
+  assert.equal(inferMeta('FF G', 'RG.xlsx', 'RANKING GIOVANI 2026 FIORETTO FEMMINILE').category, 'giovani');
+});

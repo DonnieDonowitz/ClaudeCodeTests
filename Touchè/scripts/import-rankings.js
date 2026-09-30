@@ -27,7 +27,7 @@ for (const r of rep) {
   if (r.status === 'importato') console.log(`✔ ${name} → ${r.key}: ${r.count} atleti${r.first ? ' (nuova lista)' : ` (+${r.added} nuovi, ${r.changed} posizioni cambiate, ${r.removed} usciti)`}`);
   else if (r.status === 'invariato') console.log(`= ${name} → ${r.key}: invariato`);
   else if (r.status === 'da importare') console.log(`… ${name} → ${r.key}: ${r.count} atleti (dry-run)`);
-  else console.log(`✖ ${name}: ${r.reason}`);
+  else console.log(`${r.status === 'ignorato' ? '·' : '✖'} ${name}: ${r.reason}`);
 }
 const bad = rep.filter(r => r.status === 'errore' || r.status === 'saltato').length;
 console.log(`\n${rep.filter(r => r.status === 'importato').length} importati, ${rep.filter(r => r.status === 'invariato').length} invariati, ${bad} con problemi.`);
