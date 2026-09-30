@@ -3,7 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const STATUS = { iscrizioni: 'Iscrizioni', gironi: 'Gironi', tabellone: 'Tabellone', concluso: 'Concluso' };
 const REGIONS = { 'abruzzo': 'Abruzzo', 'basilicata': 'Basilicata', 'calabria': 'Calabria', 'campania': 'Campania', 'emilia-romagna': 'Emilia-Romagna', 'friuli-venezia-giulia': 'Friuli-Venezia Giulia', 'lazio': 'Lazio', 'liguria': 'Liguria', 'lombardia': 'Lombardia', 'marche': 'Marche', 'molise': 'Molise', 'piemonte': 'Piemonte', 'puglia': 'Puglia', 'sardegna': 'Sardegna', 'sicilia': 'Sicilia', 'toscana': 'Toscana', 'trentino-alto-adige': 'Trentino-Alto Adige', 'umbria': 'Umbria', 'valle-d-aosta': 'Valle d\'Aosta', 'veneto': 'Veneto' };
-const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master', 'Bambini', 'Giovanissimi', 'Ragazzi', 'Allievi', 'Master Cat. 0', 'Master Cat. 1', 'Master Cat. 2', 'Master Cat. 3', 'Master Cat. 4'];
+const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master', 'Bambini', 'Giovanissimi', 'Ragazzi', 'Allievi', 'Master Cat. 0', 'Master Cat. 1', 'Master Cat. 2', 'Master Cat. 3', 'Master Cat. 4', 'Paralimpico', 'Non vedenti'];
 const cslug = x => String(x).toLowerCase().trim().replace(/[\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 const catLabel = x => CATEGORIES.find(c => cslug(c) === cslug(x)) || String(x).replace(/-/g, ' ').replace(/^\w/, m => m.toUpperCase());
 const ZONE = { nazionale: 'Nazionali', master: 'Master', ...REGIONS };
@@ -401,6 +401,36 @@ function bind(c) {
 const fmtDate = d => (d ? d.split('-').reverse().join('/') : '');
 const fmtPts = v => (v == null ? '' : v.toLocaleString('it-IT', { maximumFractionDigits: 2 }));
 const GROUP = { reg: 'Qualificazioni regionali / di zona', naz: 'Prove nazionali', fin: 'Campionati e fasi finali', int: 'Gare internazionali' };
+
+// Selettore del ranking: arma (con icona), sesso e categorie raggruppate; le combinazioni senza lista sono disattivate.
+const WEAPON_ICON = {
+  spada: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 42 36 12" stroke-width="2.4"/><path d="M36 12l6-6" stroke-width="1.4"/><path d="M8 32a10 10 0 0 0 8 8" stroke-width="3"/><path d="M4 44l4-4" stroke-width="4"/></svg>',
+  fioretto: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40 42 6" stroke-width="1.6"/><circle cx="12" cy="36" r="3.4" stroke-width="2.2" fill="none"/><path d="M4 44l5-5" stroke-width="4"/></svg>',
+  sciabola: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40C22 30 34 18 42 6" stroke-width="2.6"/><path d="M6 32c2 6 6 9 11 10" stroke-width="2.6"/><path d="M4 44l4-4" stroke-width="4"/></svg>',
+};
+const RK_GROUPS = [
+  ['Olimpiche', ['assoluti', 'under-23', 'giovani', 'juniores', 'cadetti']],
+  ['Under 14 · Gran Premio Giovanissimi', ['allievi', 'ragazzi', 'giovanissimi', 'bambini']],
+  ['Master', ['master', 'master-cat-0', 'master-cat-1', 'master-cat-2', 'master-cat-3', 'master-cat-4']],
+  ['Paralimpico', ['paralimpico', 'non-vedenti']],
+];
+function rkPicker(cur) {
+  const has = (cat, w, g) => rkLists.find(l => l.category === cat && l.weapon === w && l.gender === g);
+  const to = (cat, w, g) => { const l = has(cat, w, g) || rkLists.find(l => l.category === cat && l.weapon === w) || rkLists.find(l => l.category === cat); return l ? `#/ranking/${encodeURIComponent(l.key)}` : null; };
+  const btn = (on, href, html, cls = '') => href ? `<a class="${cls} ${on ? 'on' : ''}" href="${href}">${html}</a>` : `<span class="${cls} off">${html}</span>`;
+  const weapons = ['spada', 'fioretto', 'sciabola'].filter(w => rkLists.some(l => l.weapon === w));
+  const known = new Set(RK_GROUPS.flatMap(g => g[1])), other = [...new Set(rkLists.map(l => l.category))].filter(c => !known.has(c));
+  const groups = [...RK_GROUPS, ...(other.length ? [['Altre', other]] : [])].map(([t, cats]) => [t, cats.filter(c => rkLists.some(l => l.category === c))]).filter(g => g[1].length);
+  const catName = c => (c === 'master' ? 'Generale' : /^master-cat-/.test(c) ? 'Cat. ' + c.slice(-1) : catLabel(c));
+  return `<div class="rkpick card">
+    <div class="rkp-top">
+      <div class="rkp-weapons">${weapons.map(w => btn(w === cur.weapon, has(cur.category, w, cur.gender) ? to(cur.category, w, cur.gender) : to(cur.category, w, cur.gender === 'M' ? 'F' : 'M'),
+        `${WEAPON_ICON[w]}<b>${WNAME[w]}</b>`, 'wpn')).join('')}</div>
+      <div class="seg">${['M', 'F'].map(g => btn(g === cur.gender, has(cur.category, cur.weapon, g) ? to(cur.category, cur.weapon, g) : null, g === 'M' ? 'Maschile' : 'Femminile')).join('')}</div>
+    </div>
+    ${groups.map(([t, cats]) => `<div class="rkp-group"><h4>${esc(t)}</h4><div class="pills">${cats.map(c => btn(c === cur.category, has(c, cur.weapon, cur.gender) ? to(c, cur.weapon, cur.gender) : null, esc(catName(c)), 'pill')).join('')}</div></div>`).join('')}
+  </div>`;
+}
 let rkLists = null, rkQuery = '', rkOpen = new Set();
 async function rankingView(key, athlete) {
   rkLists ||= await api('GET', '/rankings');
@@ -412,32 +442,28 @@ async function rankingView(key, athlete) {
   const d = await api('GET', `/rankings/${encodeURIComponent(cur.key)}?${params}`);
   const hlKey = athlete ? decodeURIComponent(athlete) : '';
   if (hlKey) rkOpen.add(hlKey);
-  const cats = [...new Set(rkLists.map(l => l.category))].sort((a, b) => CATEGORIES.findIndex(c => cslug(c) === a) - CATEGORIES.findIndex(c => cslug(c) === b));
-  const combos = rkLists.filter(l => l.category === cur.category);
   const go = l => `#/ranking/${encodeURIComponent(l.key)}`;
-  const pick = (cat) => rkLists.find(l => l.category === cat && l.weapon === cur.weapon && l.gender === cur.gender) || rkLists.find(l => l.category === cat);
   const used = d.columns.map((c, i) => ({ ...c, i })).filter(c => d.rows.some(r => r.scores?.[c.i]));
   const upd = d.as_of ? `Aggiornato al <b>${fmtDate(d.as_of)}</b>` : d.edition ? `Ranking <b>${esc(d.edition.toLowerCase())}</b>` : '';
   const breakdown = r => {
-    const parts = d.columns.map((c, i) => ({ ...c, v: r.scores?.[i] })).filter(c => c.v);
+    const parts = d.columns.map((c, i) => ({ ...c, v: r.scores?.[i], place: r.places?.[i] })).filter(c => c.v);
     if (!parts.length) return '<p class="mute" style="margin:0">Nessun dettaglio disponibile.</p>';
     const groups = {}; parts.forEach(c => (groups[c.group] ||= []).push(c));
-    return Object.entries(groups).map(([g, list]) => `<div class="bd-g"><h4>${esc(GROUP[g] || '')}</h4>${list.map(c => `<div class="bd"><span><b>${esc(c.code)}</b> ${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span><span class="pts">${fmtPts(c.v)}</span></div>`).join('')}</div>`).join('') +
+    return Object.entries(groups).map(([g, list]) => `<div class="bd-g"><h4>${esc(GROUP[g] || '')}</h4>${list.map(c => `<div class="bd"><span>${c.code ? `<b>${esc(c.code)}</b> ` : ''}${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span><span class="pts">${c.place ? `<small class="place">${c.place}° posto</small>` : ''}${fmtPts(c.v)}</span></div>`).join('')}</div>`).join('') +
       `<div class="bd tot"><span>Totale</span><span class="pts">${fmtPts(r.total)}</span></div>`;
   };
   const trend = r => (r.prev == null ? '' : r.prev === r.pos ? '<span class="tr eq">=</span>' : r.prev > r.pos ? `<span class="tr up">▲ ${r.prev - r.pos}</span>` : `<span class="tr dn">▼ ${r.pos - r.prev}</span>`);
   APP.html = `<h1>Ranking</h1>
-    <div class="variants"><div class="vrow"><span>Categoria</span>${cats.map(cat => `<a class="chip ${cat === cur.category ? 'on' : ''}" href="${go(pick(cat))}">${esc(catLabel(cat))}</a>`).join('')}</div>
-    <div class="vrow"><span>Arma</span>${combos.map(l => `<a class="chip ${l.key === cur.key ? 'on' : ''}" href="${go(l)}">${esc(vLabel(l))}</a>`).join('')}</div></div>
+    ${rkPicker(cur)}
     <div class="card rk-head"><div><b>${esc(catLabel(cur.category))} · ${esc(vLabel(cur))}</b>${d.season ? ` · stagione ${esc(d.season)}` : ''}<div class="mute">${upd}${upd ? ' · ' : ''}${d.count} atleti · file ${esc(d.file || '')}</div></div>
       <input id="rkq" type="search" placeholder="Cerca atleta o società" value="${esc(rkQuery)}"></div>
     <div class="card" style="overflow-x:auto"><table class="rk"><tr><th>Pos</th><th></th><th class="l">Atleta</th><th class="l">Società</th><th>Anno</th><th>Punti</th><th></th></tr>
-    ${d.rows.map(r => `<tr class="${r.key === hlKey ? 'hlrow' : ''}" id="rk-${esc(r.key.replace(/\s/g, '_'))}"><td><b>${r.pos}</b></td><td>${trend(r)}</td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(r.key)}">${r.key === hlKey ? `<mark class="hl">${esc(r.name)}</mark>` : esc(r.name)}</a></td>
+    ${d.rows.map(r => `<tr class="${r.key === hlKey ? 'hlrow' : ''}" id="rk-${esc(r.key.replace(/\s/g, '_'))}"><td><b>${r.pos}</b></td><td>${trend(r)}</td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(r.key)}">${r.key === hlKey ? `<mark class="hl">${esc(r.name)}</mark>` : esc(r.name)}</a>${r.note ? ` <span class="badge">${esc(r.note)}</span>` : ''}</td>
       <td class="l">${r.club ? `<a class="pl" href="#/s/${encodeURIComponent(r.clubKey)}" title="${esc(r.club)}">${esc(r.clubName || r.club)}</a>` : ''}</td><td>${esc(r.born || '')}</td><td class="pts">${fmtPts(r.total)}</td>
       <td><button class="small" data-bd="${esc(r.key)}">${rkOpen.has(r.key) ? 'Chiudi' : 'Dettaglio'}</button></td></tr>
       ${rkOpen.has(r.key) ? `<tr class="bdrow"><td colspan="7">${breakdown(r)}</td></tr>` : ''}`).join('') || '<tr><td colspan="7" class="mute">Nessun atleta trovato.</td></tr>'}</table>
     <div class="row2" style="justify-content:space-between;margin-top:10px"><button id="rkprev" ${d.offset ? '' : 'disabled'}>‹ Precedenti</button><span class="mute">${d.matches ? `${d.offset + 1}–${Math.min(d.offset + d.limit, d.matches)} di ${d.matches}` : ''}</span><button id="rknext" ${d.offset + d.limit < d.matches ? '' : 'disabled'}>Successivi ›</button></div></div>
-    <details class="card"><summary><b>Legenda delle gare</b> <span class="mute">(sigle delle colonne del file)</span></summary>${used.length ? used.map(c => `<div class="bd"><span><b>${esc(c.code)}</b> ${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span><span class="mute">${esc(GROUP[c.group] || '')}</span></div>`).join('') : '<p class="mute">—</p>'}</details>`;
+    <details class="card"><summary><b>Legenda delle gare</b> <span class="mute">(sigle delle colonne del file)</span></summary>${used.length ? used.map(c => `<div class="bd"><span>${c.code ? `<b>${esc(c.code)}</b> ` : ''}${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span><span class="mute">${esc(GROUP[c.group] || '')}</span></div>`).join('') : '<p class="mute">—</p>'}</details>`;
   const page = o => { sessionStorage.setItem('rkOff:' + cur.key, o); history.replaceState(null, '', go(cur)); rankingView(cur.key); };
   $('#rkprev').onclick = () => page(Math.max(0, d.offset - d.limit));
   $('#rknext').onclick = () => page(d.offset + d.limit);

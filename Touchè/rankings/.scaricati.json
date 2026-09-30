@@ -1,0 +1,42 @@
+{
+ "assoluto": {
+  "url": "https://federscherma.it/documento/ranking-assoluto-2026-27-iniziale/",
+  "modified": "2026-09-22",
+  "file": "Ranking-Assoluto-agg.-22-09-26-2026-2027-INIZIALE-V1.xlsx"
+ },
+ "master": {
+  "url": "https://federscherma.it/documento/ranking-master-2026-2027-iniziale/",
+  "modified": "2026-08-10",
+  "file": "RankingMaster-2026-27-INIZIALE-v1.xls"
+ },
+ "cadetti": {
+  "url": "https://federscherma.it/documento/ranking-cadetti-2026-27-iniziale/",
+  "modified": "2026-07-17",
+  "file": "RC-2026-2027-INIZIALE.xlsx"
+ },
+ "paralimpico": {
+  "url": "https://federscherma.it/documento/ranking-paralimpico-agg-06-06-2026/",
+  "modified": "2026-06-09",
+  "file": "RANKING-PARALIMPICO-2025-2026_AGG_06.06.2026.xls"
+ },
+ "giovani": {
+  "url": "https://federscherma.it/documento/ranking-giovani-2026-27-n-1-27-del-27-09-2026/",
+  "modified": "2026-09-28",
+  "file": "RG-2026-2027-agg.-n.-1-del-27.9.26.xlsx"
+ },
+ "u23": {
+  "url": "https://federscherma.it/documento/ranking-under-23-2026-2027-iniziale/",
+  "modified": "2026-09-22",
+  "file": "Ranking-U23-2026-2027-INIZIALE-v3-agg.-22-09-26.xlsx"
+ },
+ "gpg": {
+  "url": "https://federscherma.it/documento/ranking-gpg-2025-2026-agg-14-05-26/",
+  "modified": "2026-05-15",
+  "file": "Ranking-GPG-14-2025-2026_AGG.14.05.2026.zip"
+ },
+ "non-vedenti": {
+  "url": "https://federscherma.it/documento/ranking-non-vedenti-agg-06-06-2026/",
+  "modified": "2026-06-09",
+  "file": "RANKING_NV_2025-26_AGG_06.06.2026.xls"
+ }
+}

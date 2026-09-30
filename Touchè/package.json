@@ -10,8 +10,9 @@
     "rankings": "node scripts/import-rankings.js",
     "create-user": "node scripts/create-user.js",
     "results": "node scripts/import-results.js",
-    "setup": "node scripts/remove-demo.js && node scripts/import-rankings.js && node scripts/import-results.js",
-    "remove-demo": "node scripts/remove-demo.js"
+    "setup": "node scripts/remove-demo.js && node scripts/import-rankings.js --fetch && node scripts/import-results.js",
+    "remove-demo": "node scripts/remove-demo.js",
+    "rankings:fetch": "node scripts/import-rankings.js --fetch"
   },
   "engines": {
     "node": ">=22.5"

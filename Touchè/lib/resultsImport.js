@@ -14,7 +14,7 @@ async function get(url, tries = 3) {
 }
 
 // Elenco dei documenti (slug con "risultat…") modificati dalla data indicata, dalle sitemap pubbliche del sito.
-async function listDocuments(since) {
+async function listDocuments(since, test = slug => /risultat/i.test(slug)) {
   const index = await (await get(`${SITE}/sitemap_index.xml`)).text();
   const maps = [...index.matchAll(/<loc>([^<]*documento-sitemap\d*\.xml)<\/loc>/g)].map(m => m[1]);
   const docs = [];
@@ -22,7 +22,7 @@ async function listDocuments(since) {
     const xml = await (await get(m)).text();
     for (const u of xml.matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*<lastmod>([^<]*)<\/lastmod>/g)) {
       const slug = u[1].split('/documento/')[1] || '';
-      if (/risultat/i.test(slug) && u[2].slice(0, 10) >= since) docs.push({ url: u[1], slug: slug.replace(/\/$/, ''), modified: u[2].slice(0, 10) });
+      if (test(slug) && u[2].slice(0, 10) >= since) docs.push({ url: u[1], slug: slug.replace(/\/$/, ''), modified: u[2].slice(0, 10) });
     }
   }
   return docs.sort((a, b) => a.modified.localeCompare(b.modified));
@@ -114,4 +114,4 @@ async function importResults(store, { since = '2025-08-01', cacheDir, localDir, 
   return report;
 }
 
-module.exports = { importResults, listDocuments };
+module.exports = { importResults, listDocuments, get, SITE };

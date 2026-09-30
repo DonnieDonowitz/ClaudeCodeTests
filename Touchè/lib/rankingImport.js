@@ -11,7 +11,7 @@ const RULES = {
   weapon: [['fioretto', /fiorett|foil/], ['spada', /\bspad|epee/], ['sciabola', /sciabol|sabre|saber/]],
   gender: [['F', /femmin|\bdonn|\bfem\b|(^|[^a-z])f($|[^a-z])/], ['M', /maschil|\buomin|\bmasc\b|(^|[^a-z])m($|[^a-z])/]],
   // L'ordine conta: le categorie più specifiche prima delle generiche.
-  category: [['__combinata', /ragazz\w*[\s-]*i?\s*\+\s*allie/], ['bambini', /bambin|maschietti/], ['giovanissimi', /giovanissim/], ['ragazzi', /ragazz/], ['allievi', /allie[vw]/],
+  category: [['paralimpico', /paralimpic/], ['non-vedenti', /non ?veden|(^|[^a-z])nv($|[^a-z])/], ['__combinata', /ragazz\w*[\s-]*i?\s*\+\s*allie/], ['bambini', /bambin|maschietti/], ['giovanissimi', /giovanissim/], ['ragazzi', /ragazz/], ['allievi', /allie[vw]/],
     ['under-14', /under ?14|\bu ?14\b/], ['under-23', /under ?23|\bu ?23\b/], ['cadetti', /cadett|under ?17|\bu ?17\b/], ['giovani', /giovan/],
     ['juniores', /junior|under ?20|\bu ?20\b/], ['assoluti', /assolut|senior/], ['master', /master|amis|veteran/]],
 };
@@ -38,7 +38,7 @@ function listFiles(dir) {
 // Restituisce un resoconto per ogni lista trovata: { file, sheet, status, ... }.
 function importDir(store, dir, { dryRun = false, force = false, season = '', log = () => {} } = {}) {
   const manifest = fs.existsSync(path.join(dir, 'manifest.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')) : {};
-  const report = [];
+  const report = [], cand = [];
   for (const file of listFiles(dir)) {
     const buf = fs.readFileSync(path.join(dir, file)), fileHash = crypto.createHash('sha256').update(buf).digest('hex');
     let lists;
@@ -50,13 +50,20 @@ function importDir(store, dir, { dryRun = false, force = false, season = '', log
       if (m.category === '__combinata') { report.push({ file, sheet: label, status: 'ignorato', reason: 'lista combinata, già coperta dalle liste singole' }); continue; }
       const missing = ['weapon', 'category', 'gender'].filter(k => !m[k]);
       if (missing.length) { report.push({ file, sheet: label, status: 'saltato', reason: `non riesco a dedurre: ${missing.join(', ')} (usa rankings/manifest.json)` }); continue; }
-      const key = Store.rankKey(m.category, m.weapon, m.gender), h = fileHash + '#' + (l.source ? l.source + '#' : '') + l.name + '#v2';
-      if (!force && store.rankingList(key)?.file_hash === h) { report.push({ file, sheet: label, status: 'invariato', sheet: label, key, count: l.entries.length }); continue; }
-      if (dryRun) { report.push({ file, sheet: label, status: 'da importare', sheet: label, key, count: l.entries.length }); continue; }
-      const t = l.table || {};
-      const r = store.importList({ ...m, entries: l.entries, file: (l.source || file).replace(/^Copia di /i, ''), hash: h, season: m.season || season || t.season || '', columns: t.columns, legend: t.legend, asOf: t.asOf, edition: t.edition, title: t.title });
-      report.push({ file, sheet: label, status: 'importato', sheet: label, ...r });
+      cand.push({ file, l, m, label, key: Store.rankKey(m.category, m.weapon, m.gender), h: fileHash + '#' + (l.source ? l.source + '#' : '') + l.name + '#v3' });
     }
+  }
+  // Se più file contengono la stessa lista (es. un vecchio aggiornamento rimasto nella cartella) si usa la più recente.
+  const best = new Map();
+  for (const c of cand) { const o = best.get(c.key); if (!o || (c.l.table?.asOf || '') > (o.l.table?.asOf || '')) best.set(c.key, c); }
+  for (const c of cand) {
+    const { file, l, m, label, key, h } = c;
+    if (best.get(key) !== c) { report.push({ file, sheet: label, status: 'ignorato', reason: `esiste una versione più recente (${best.get(key).file})` }); continue; }
+    if (!force && store.rankingList(key)?.file_hash === h) { report.push({ file, sheet: label, status: 'invariato', key, count: l.entries.length }); continue; }
+    if (dryRun) { report.push({ file, sheet: label, status: 'da importare', key, count: l.entries.length }); continue; }
+    const t = l.table || {};
+    const r = store.importList({ ...m, entries: l.entries, file: (l.source || file).replace(/^Copia di /i, ''), hash: h, season: m.season || season || t.season || '', columns: t.columns, legend: t.legend, asOf: t.asOf, edition: t.edition, title: t.title });
+    report.push({ file, sheet: label, status: 'importato', ...r });
   }
   return report;
 }

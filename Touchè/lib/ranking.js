@@ -144,7 +144,7 @@ function parseRankingLists(buf, filename = '') {
     let table = null; try { table = extractTable(sh.rows, { title, fileNames: [sh.source, filename].filter(Boolean) }); } catch {}
     if (table) { // punteggi per gara, totale e posizione precedente di ogni atleta
       const byKey = new Map(table.rows.map(r => [r.key + '|' + r.pos, r]));
-      for (const e of entries) { const t = byKey.get(e.key + '|' + e.pos); if (t) Object.assign(e, { born: t.born, total: t.total, prev: t.prev, diff: t.diff, scores: t.scores }); }
+      for (const e of entries) { const t = byKey.get(e.key + '|' + e.pos); if (t) Object.assign(e, { born: t.born, total: t.total, prev: t.prev, diff: t.diff, scores: t.scores, places: t.places, note: t.note }); }
     }
     return { source: sh.source, name: sh.name, entries, title, table: table && { columns: table.columns, legend: table.legend, asOf: table.asOf, edition: table.edition, season: table.season, title: table.title } };
   }).filter(l => l.entries.length);

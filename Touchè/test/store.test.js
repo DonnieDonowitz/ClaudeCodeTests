@@ -72,3 +72,16 @@ test('società: codice → nome, provincia dal prefisso', () => {
   const csv = readClubsCsv(path.join(__dirname, '..', 'rankings', 'societa.csv'));
   assert.ok(csv.find(c => c.code === 'PUFAN'));
 });
+test('ranking paralimpico: gare sopra l\'intestazione, piazzamento + punti, categoria A/B/C', () => {
+  const { extractTable } = require('../lib/rankingTable');
+  const rows = [['FEDERAZIONE ITALIANA SCHERMA'], [], ['RANKING PARALIMPICO 2025 - 2026 - SPADA MASCHILE'], ['AGGIORNAMENTO - 06 Giugno 2026'], [],
+    [null, null, null, null, null, null, null, '1^ Prova NAZIONALE 2025-26', null, 'CdM'], [null, null, null, null, null, null, null, 'S.LAZZARO NOV. 2025', null, 'PISA (ITA) FEB. 2026'], [null, null, null, null, null, null, null, '1.5', null, '2.5'],
+    ['Rank', 'NOME', 'Codice', 'Società', 'Anno', null, null, null, null, null, null, 'TOTALE', 'Rank prec.', '+/-'],
+    ...Array.from({ length: 6 }, (_, i) => [String(i + 1), `ATLETA ${'ABCDEF'[i]}`, '72975' + i, 'LIACC', '01', 'SpM', 'ABCABC'[i], '2', '46.8', '12', '90.12', '136.92', String(i + 1), '0'])];
+  const t = extractTable(rows, {});
+  assert.equal(t.asOf, '2026-06-06');
+  assert.deepEqual(t.columns.map(c => c.key), ['1^ Prova NAZIONALE 2025-26', 'CdM']);
+  assert.deepEqual([t.rows[0].scores, t.rows[0].places, t.rows[0].note, t.rows[0].total, t.rows[0].born], [[46.8, 90.12], [2, 12], 'Cat. A', 136.92, '2001']);
+  assert.equal(inferMeta('SpF_NV', '', 'RANKING NON VEDENTI 2025 - 2026 - SPADA FEMMINILE').category, 'non-vedenti');
+  assert.deepEqual(inferMeta('ScM', '', 'RANKING PARALIMPICO 2025 - 2026 - SCIABOLA MASCHILE'), { weapon: 'sciabola', gender: 'M', category: 'paralimpico' });
+});

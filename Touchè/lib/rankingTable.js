@@ -6,7 +6,7 @@ const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); retu
 const round = n => (n == null ? null : Math.round(n * 1000) / 1000);
 const serialToIso = v => { const n = parseFloat(v); if (!(n > 30000 && n < 80000)) return ''; return new Date(Date.UTC(1899, 11, 30) + n * 864e5).toISOString().slice(0, 10); };
 const MONTHS = { gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6, luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12 };
-const birthYear = v => { const n = parseFloat(v); if (n > 10000) return serialToIso(n).slice(0, 4); if (n >= 1900 && n < 2100) return String(n); return n > 0 && n < 100 ? String(n) : ''; };
+const birthYear = v => { const n = parseFloat(v); if (n > 10000) return serialToIso(n).slice(0, 4); if (n >= 1900 && n < 2100) return String(n); if (n >= 0 && n < 100 && /^\d{1,2}$/.test(String(v).trim())) return String(n <= (new Date().getFullYear() % 100) + 1 ? 2000 + n : 1900 + n); return ''; };
 const pad = n => String(n).padStart(2, '0');
 
 // Data dell'aggiornamento: dal titolo ("Aggiornamento n. 1 del 27/09/2026", "AGGIORNAMENTO 14 Maggio 2026"), altrimenti dal nome del file ("agg.-22-09-26").
@@ -14,7 +14,7 @@ function updateDate(titleText, fileNames) {
   const t = String(titleText);
   let m = /aggiornament\w*[^0-9]*(?:n\.?\s*\d+\s*)?del\s+(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/i.exec(t);
   if (m) return `${m[3].length === 2 ? '20' + m[3] : m[3]}-${pad(m[2])}-${pad(m[1])}`;
-  m = /aggiornament\w*\s+(\d{1,2})\s+([a-zà]+)\s+(\d{4})/i.exec(t);
+  m = /aggiornament\w*[\s-]+(\d{1,2})\s+([a-zà]+)\s+(\d{4})/i.exec(t);
   if (m && MONTHS[m[2].toLowerCase()]) return `${m[3]}-${pad(MONTHS[m[2].toLowerCase()])}-${pad(m[1])}`;
   for (const f of fileNames) {
     m = /(?:agg|aggiornat\w*)[._\s-]*(?:n[._\s-]*\d+[._\s-]*del[._\s-]*)?(\d{1,2})[._-](\d{1,2})[._-](\d{2,4})/i.exec(f);
@@ -30,7 +30,7 @@ function extractTable(rows, { title = '', fileNames = [] } = {}) {
   const find = re => head.findIndex(c => c && re.test(norm(c)));
   const posCol = find(/^(rank|pos|posizione)$/), clubCol = find(/^(societa|club)/), codeCol = find(/^(codice|codice fis)$/);
   const nameCols = head.map((c, i) => (/^(cognome|nome|atleta|nominativo|cognome nome|nome cognome)$/.test(norm(c)) ? i : -1)).filter(i => i >= 0);
-  const yearCol = find(/^(anno|data di nascita)$/), totalCol = find(/^(totale|media)$/), prevCol = find(/^rank (prec|iniz)/), diffCol = head.findIndex(c => /^(diff\.? ?)?\+ ?\/ ?-$/i.test(c));
+  const yearCol = find(/^(anno|data di nascita)$/), totalCol = find(/^(totale|media|punti)$/), prevCol = find(/^rank (prec|iniz)/), diffCol = head.findIndex(c => /^(diff\.? ?)?\+ ?\/ ?-$/i.test(c));
   const kqCol = head.findIndex(c => /^kq$/i.test(c)), catCol = find(/^cat$/);
   const firstScore = Math.max(clubCol, yearCol, codeCol, ...nameCols) + 1;
   const stop = [prevCol, diffCol, kqCol].filter(i => i > firstScore).sort((a, b) => a - b)[0] ?? head.length;
@@ -46,10 +46,24 @@ function extractTable(rows, { title = '', fileNames = [] } = {}) {
     else break;
   }
   const dataStart = h + 1 + subs.length;
-  const columns = scoreCols.map(i => {
+  let columns = scoreCols.map(i => {
     const extra = subs.map(r => String((rows[r] || [])[i] ?? '').trim()).filter(Boolean).map(x => (/^\d{5}$/.test(x) ? serialToIso(x) : x));
     return { key: head[i], sub: extra.join(' · ') };
   });
+  // Ranking paralimpico / non vedenti: le gare sono scritte SOPRA l'intestazione (nome, luogo e data, coefficiente)
+  // e ogni gara occupa due colonne: piazzamento e punti.
+  const tidy = x => String(x ?? '').replace(/\s+/g, ' ').trim();
+  let pairs = null, noteCol = -1;
+  if (!scoreCols.length && h >= 3) {
+    const evs = [];
+    for (let i = firstScore; i < stop; i++) if (tidy((rows[h - 3] || [])[i]) && i !== totalCol) evs.push(i);
+    if (evs.length) {
+      pairs = evs;
+      columns = evs.map(i => ({ key: tidy(rows[h - 3][i]), sub: [tidy((rows[h - 2] || [])[i]), tidy((rows[h - 1] || [])[i]) ? 'coeff. ' + tidy(rows[h - 1][i]) : ''].filter(Boolean).join(' · ') }));
+      // categoria paralimpica (A, B, C) in una colonna senza intestazione prima delle gare
+      for (let i = firstScore; i < evs[0]; i++) if (rows.slice(dataStart, dataStart + 30).filter(r => /^[ABC]$/.test(tidy((r || [])[i]))).length >= 5) noteCol = i;
+    }
+  }
 
   const out = [];
   const legend = [];
@@ -65,7 +79,10 @@ function extractTable(rows, { title = '', fileNames = [] } = {}) {
     out.push({
       key: nameKey(name), name, pos, club: String(row[clubCol] ?? '').trim(), code: codeCol >= 0 ? String(row[codeCol] ?? '').trim() : '',
       born: yearCol >= 0 ? birthYear(row[yearCol]) : '', total: round(num(row[totalCol])), prev: prevCol >= 0 ? parseInt(row[prevCol], 10) || null : null,
-      diff: diffCol >= 0 ? parseInt(row[diffCol], 10) || 0 : null, scores: scoreCols.map(i => round(num(row[i]))),
+      diff: diffCol >= 0 ? parseInt(row[diffCol], 10) || 0 : null,
+      scores: pairs ? pairs.map(i => round(num(row[i + 1]))) : scoreCols.map(i => round(num(row[i]))),
+      ...(pairs ? { places: pairs.map(i => parseInt(row[i], 10) || null) } : {}),
+      ...(noteCol >= 0 && tidy(row[noteCol]) ? { note: 'Cat. ' + tidy(row[noteCol]) } : {}),
     });
   }
   const text = title + ' ' + rows.slice(0, h).flat().filter(Boolean).join(' ');

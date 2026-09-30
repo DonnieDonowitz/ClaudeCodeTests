@@ -42,7 +42,7 @@ module.exports = function createContext(S) {
     if (ok) fails.delete(k); else fails.set(k, { n: (fails.get(k)?.n || 0) + 1, t: fails.get(k)?.t || now });
   }
 
-  const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master', 'Bambini', 'Giovanissimi', 'Ragazzi', 'Allievi', 'Master Cat. 0', 'Master Cat. 1', 'Master Cat. 2', 'Master Cat. 3', 'Master Cat. 4'];
+  const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master', 'Bambini', 'Giovanissimi', 'Ragazzi', 'Allievi', 'Master Cat. 0', 'Master Cat. 1', 'Master Cat. 2', 'Master Cat. 3', 'Master Cat. 4', 'Paralimpico', 'Non vedenti'];
   const WEAPONS = ['spada', 'fioretto', 'sciabola'];
   const rankKey = c => Store.rankKey(c.category, c.weapon, c.gender);
   const rk = a => a.rank ?? R.UNRANKED;

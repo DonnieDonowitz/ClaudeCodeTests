@@ -41,7 +41,7 @@ function open(file) {
   // Migrazione: codice FIS dell'atleta nei ranking (serve per collegare i risultati delle gare alle società).
   if (!db.prepare('PRAGMA table_info(ranking_entries)').all().some(c => c.name === 'code')) db.exec("ALTER TABLE ranking_entries ADD COLUMN code TEXT NOT NULL DEFAULT ''");
   for (const [t, col, def] of [['ranking_entries', 'born', "TEXT NOT NULL DEFAULT ''"], ['ranking_entries', 'total', 'REAL'], ['ranking_entries', 'prev', 'INTEGER'], ['ranking_entries', 'diff', 'INTEGER'],
-    ['ranking_entries', 'scores', 'TEXT'], ['ranking_lists', 'columns', 'TEXT'], ['ranking_lists', 'legend', 'TEXT'], ['ranking_lists', 'as_of', "TEXT NOT NULL DEFAULT ''"],
+    ['ranking_entries', 'scores', 'TEXT'], ['ranking_entries', 'places', 'TEXT'], ['ranking_entries', 'note', "TEXT NOT NULL DEFAULT ''"], ['ranking_lists', 'columns', 'TEXT'], ['ranking_lists', 'legend', 'TEXT'], ['ranking_lists', 'as_of', "TEXT NOT NULL DEFAULT ''"],
     ['ranking_lists', 'edition', "TEXT NOT NULL DEFAULT ''"], ['ranking_lists', 'title', "TEXT NOT NULL DEFAULT ''"]])
     if (!db.prepare(`PRAGMA table_info(${t})`).all().some(c => c.name === col)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${col} ${def}`);
   db.exec('CREATE INDEX IF NOT EXISTS re_code ON ranking_entries(code)');
@@ -139,10 +139,10 @@ function open(file) {
       q('DELETE FROM ranking_lists WHERE key=?').run(key);
       q('INSERT INTO ranking_lists(key,category,weapon,gender,season,file,file_hash,updated,count,columns,legend,as_of,edition,title) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
         .run(key, slug(category), slug(weapon), g, season, file, fh, Date.now(), entries.length, columns && JSON.stringify(columns), legend && JSON.stringify(legend), asOf, edition, title);
-      const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos,code,born,total,prev,diff,scores) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)');
+      const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos,code,born,total,prev,diff,scores,places,note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
       let added = 0, changed = 0;
       for (const e of entries) {
-        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos, e.code || '', e.born || '', e.total ?? null, e.prev ?? null, e.diff ?? null, e.scores ? JSON.stringify(e.scores) : null);
+        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos, e.code || '', e.born || '', e.total ?? null, e.prev ?? null, e.diff ?? null, e.scores ? JSON.stringify(e.scores) : null, e.places ? JSON.stringify(e.places) : null, e.note || '');
         if (!old.has(e.key)) added++; else if (old.get(e.key) !== e.pos) changed++;
       }
       const seen = new Set(entries.map(e => e.key));
@@ -154,8 +154,8 @@ function open(file) {
       const w = ['list_key=?', ...terms.map(() => `(name_key LIKE ? ESCAPE '\\' OR club_key LIKE ? ESCAPE '\\')`)].join(' AND ');
       const args = [key, ...terms.flatMap(t => [like(t), like(t)])];
       const total = q(`SELECT COUNT(*) n FROM ranking_entries WHERE ${w}`).get(...args).n;
-      const rows = q(`SELECT name_key key, name, club, code, pos, born, total, prev, diff, scores FROM ranking_entries WHERE ${w} ORDER BY pos, name LIMIT ? OFFSET ?`).all(...args, limit, offset)
-        .map(r => ({ ...r, scores: r.scores ? JSON.parse(r.scores) : null }));
+      const rows = q(`SELECT name_key key, name, club, code, pos, born, total, prev, diff, scores, places, note FROM ranking_entries WHERE ${w} ORDER BY pos, name LIMIT ? OFFSET ?`).all(...args, limit, offset)
+        .map(r => ({ ...r, scores: r.scores ? JSON.parse(r.scores) : null, places: r.places ? JSON.parse(r.places) : null }));
       return { total, rows };
     },
     rankingPos: (key, nameKey) => q('SELECT pos FROM ranking_entries WHERE list_key=? AND name_key=?').get(key, nameKey)?.pos ?? null,

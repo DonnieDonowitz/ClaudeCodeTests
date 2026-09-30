@@ -4,17 +4,24 @@
 //   npm run rankings -- --dry-run        mostra cosa farebbe, senza scrivere
 //   npm run rankings -- --force          reimporta anche i file invariati
 //   npm run rankings -- --dir altra/cartella --season 2025/26
+//   npm run rankings -- --fetch          scarica prima dal sito Federscherma l'ultima versione di ogni ranking (anche paralimpico e non vedenti)
 // Per aggiornare i ranking: sostituisci i file xlsx nella cartella e rilancia il comando.
 const path = require('path');
 const { open } = require('../lib/store');
 const { importDir, importClubs } = require('../lib/rankingImport');
+const { fetchRankings } = require('../lib/rankingFetch');
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i < 0 ? d : process.argv[i + 1]; };
 const flag = n => process.argv.includes('--' + n);
 const dir = path.resolve(arg('dir', path.join(__dirname, '..', 'rankings')));
 const dbFile = process.env.TOUCHE_DB || path.join(__dirname, '..', 'data', 'touche.db');
 
+(async () => {
 let rep;
+if (flag('fetch')) {
+  try { for (const f of await fetchRankings(dir, { log: m => console.log(m) })) if (f.status === 'errore') console.log(`✖ ${f.family}: ${f.reason}`); }
+  catch (e) { console.error('Download dei ranking non riuscito:', e.message); }
+}
 try {
   const store = open(dbFile);
   rep = importDir(store, dir, { dryRun: flag('dry-run'), force: flag('force'), season: arg('season', '') });
@@ -33,3 +40,4 @@ for (const r of rep) {
 const bad = rep.filter(r => r.status === 'errore' || r.status === 'saltato').length;
 console.log(`\n${rep.filter(r => r.status === 'importato').length} importati, ${rep.filter(r => r.status === 'invariato').length} invariati, ${bad} con problemi.`);
 process.exit(bad ? 2 : 0);
+})();

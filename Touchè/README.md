@@ -51,6 +51,10 @@ I PDF scaricati restano in `data/pdf-cache/`. Il formato delle classifiche (`Cla
 gironi e tabelloni dettagliati non vengono ancora importati.
 
 ## Ranking Federscherma
+`npm run rankings:fetch` scarica dal sito della Federscherma l'ultima versione di ogni ranking (assoluto, under 23, giovani, cadetti, master,
+Gran Premio Giovanissimi, paralimpico e non vedenti) nella cartella `rankings/` e la importa; `npm run setup` lo fa automaticamente.
+Se nella cartella ci sono più versioni della stessa lista si usa la più recente. Nella sezione Ranking dell'app si vedono data di aggiornamento
+e il dettaglio dei punti per ogni gara (per il paralimpico anche piazzamento e categoria A/B/C).
 Metti gli xlsx in `rankings/` e lancia `npm run rankings` (vedi `rankings/LEGGIMI.txt`). Per aggiornare: sostituisci i file e rilancia;
 i file invariati vengono saltati, per gli altri il comando mostra nuovi atleti, posizioni cambiate e usciti. `--dry-run` per provare.
 
