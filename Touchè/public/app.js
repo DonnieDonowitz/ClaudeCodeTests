@@ -153,7 +153,7 @@ async function newView() {
 async function compView(id, t, poll) {
   const c = await api('GET', '/competitions/' + id);
   if (poll && (document.activeElement?.matches('textarea,select,input:not([data-live])') || document.querySelector('dialog[open]'))) return;
-  tab = t && t !== '_' ? t : tab;
+  tab = t && t !== '_' ? t : c.source ? 'finale' : tab;
   const avail = ['atleti', ...(c.pools ? ['gironi', 'classifica'] : []), ...(c.de ? ['tabellone'] : []), ...(c.final?.length ? ['finale'] : []), ...(c.canEdit ? ['arbitri'] : [])];
   if (!avail.includes(tab)) tab = avail.filter(x => x !== 'arbitri').at(-1);
   const name = Object.fromEntries(c.athletes.map(a => [a.id, a]));
@@ -165,7 +165,7 @@ async function compView(id, t, poll) {
   const mineP = c.referee ? (c.pools || []).filter(p => p.refereeId === c.referee.id).length : 0;
   const mineM = c.referee ? (c.de?.rounds || []).flat().filter(m => m.refereeId === c.referee.id && !m.winner).length : 0;
   $('#app').innerHTML = `<div class="row2" style="justify-content:space-between"><div><h1>${esc(c.name)}</h1>
-    <div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender || 'M')} · ${esc(c.place)} · ${esc(c.date)} · direttore: ${esc(c.owner)}</div></div>
+    <div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender || 'M')} · ${esc(c.place)} · ${esc(c.date)} · ${c.source ? `fonte: <a href="${esc(c.source.url)}" target="_blank" rel="noopener">${esc(c.source.name)}</a>${c.source.provisional ? ' (classifica provvisoria)' : ''}` : 'direttore: ' + esc(c.owner || '—')}</div></div>
     <span class="badge ${c.status}">${STATUS[c.status]}</span></div>
     ${c.referee ? `<div class="banner">Ciao <b>${esc(c.referee.name)}</b>: ${mineP} gironi e ${mineM} assalti del tabellone ti aspettano. Tocca una cella della griglia (o un punteggio nel tabellone) per inserire il risultato.</div>` : ''}
     <div class="tabs">${avail.map(x => `<a href="#/c/${id}/${x}${HL ? '/' + encodeURIComponent(HL) : ''}" class="${x === tab ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</a>`).join('')}</div>${body}`;
@@ -183,6 +183,12 @@ function cutBanner(c) {
 }
 
 function athletesTab(c) {
+  if (c.source) { // gara importata: elenco dei partecipanti in ordine di classifica finale
+    const pos = Object.fromEntries((c.final || []).map(f => [f.id, f.pos]));
+    const list = [...c.athletes].sort((a, b) => (pos[a.id] ?? 1e9) - (pos[b.id] ?? 1e9));
+    return `<div class="card"><table><tr><th>Pos</th><th class="l">Atleta</th><th class="l">Società</th></tr>` + list.map(a => `<tr><td>${pos[a.id] ?? ''}</td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>` : ''}</td></tr>`).join('') + `</table><p class="hint">${list.length} partecipanti.</p></div>` +
+      (c.canEdit ? '<button class="danger small" id="delComp">Elimina gara</button>' : '');
+  }
   const e = c.canEdit && !c.pools, ri = c.rankingInfo;
   return cutBanner(c) + `<div class="card"><table><tr><th>#</th><th>Ranking</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
     c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>` : ''}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +

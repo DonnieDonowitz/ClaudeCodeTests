@@ -80,20 +80,21 @@ const nameKey = s => norm(s).split(' ').filter(Boolean).sort().join(' ');
 // Restituisce [{ key, name, club, pos }] (per ogni atleta tiene la posizione migliore).
 function extractEntries(rows) {
   const has = (cell, re) => re.test(norm(cell));
-  const add = (out, name, club, pos) => { const k = nameKey(name); if (!out.has(k) || pos < out.get(k).pos) out.set(k, { key: k, name, club, pos }); };
+  const add = (out, name, club, pos, code = '') => { const k = nameKey(name); if (!out.has(k) || pos < out.get(k).pos) out.set(k, { key: k, name, club, pos, code }); };
   for (let h = 0; h < Math.min(rows.length, 40); h++) {
     const row = rows[h] || [];
     const rankCol = row.findIndex(c => c !== undefined && has(c, /^(pos|posizione|rank|ranking|classifica|class|pl|n|n pos|posiz)$/));
     const nameCols = [];
     row.forEach((c, i) => { if (c !== undefined && has(c, /^(cognome|nome|atleta|atleti|nominativo|tesserato|cognome e nome|nome e cognome|cognome nome|nome cognome|atleta nominativo)$/)) nameCols.push(i); });
     const clubCol = row.findIndex(c => c !== undefined && has(c, /^(societa|societa sportiva|club|sodalizio|sigla societa|denominazione societa|ass sportiva)$/));
+    const codeCol = row.findIndex(c => c !== undefined && has(c, /^(codice|codice fis|numfis|num fis|cod)$/));
     if (rankCol < 0 || !nameCols.length) continue;
     nameCols.sort((a, b) => a - b);
     const out = new Map();
     for (const r of rows.slice(h + 1)) {
       const pos = parseInt(String(r?.[rankCol] ?? '').trim(), 10);
       const name = nameCols.map(i => String(r?.[i] ?? '').trim()).filter(Boolean).join(' ');
-      if (Number.isFinite(pos) && pos > 0 && name) add(out, name, clubCol >= 0 ? String(r?.[clubCol] ?? '').trim() : '', pos);
+      if (Number.isFinite(pos) && pos > 0 && name) add(out, name, clubCol >= 0 ? String(r?.[clubCol] ?? '').trim() : '', pos, codeCol >= 0 ? String(r?.[codeCol] ?? '').trim() : '');
     }
     if (out.size) return [...out.values()];
   }

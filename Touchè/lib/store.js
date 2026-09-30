@@ -38,6 +38,10 @@ function open(file) {
   CREATE TABLE IF NOT EXISTS clubs(code_key TEXT PRIMARY KEY, code TEXT NOT NULL, name TEXT NOT NULL, name_key TEXT NOT NULL, city TEXT NOT NULL DEFAULT '');
   CREATE INDEX IF NOT EXISTS clubs_name ON clubs(name_key);`);
 
+  // Migrazione: codice FIS dell'atleta nei ranking (serve per collegare i risultati delle gare alle società).
+  if (!db.prepare('PRAGMA table_info(ranking_entries)').all().some(c => c.name === 'code')) db.exec("ALTER TABLE ranking_entries ADD COLUMN code TEXT NOT NULL DEFAULT ''");
+  db.exec('CREATE INDEX IF NOT EXISTS re_code ON ranking_entries(code)');
+  if (!db.prepare('PRAGMA table_info(clubs)').all().some(c => c.name === 'source')) db.exec("ALTER TABLE clubs ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'");
   const q = sql => db.prepare(sql);
   const tx = fn => (...a) => { db.exec('BEGIN'); try { const r = fn(...a); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
   const like = t => '%' + t.replace(/[\\%_]/g, m => '\\' + m) + '%';
@@ -117,10 +121,10 @@ function open(file) {
       q('DELETE FROM ranking_lists WHERE key=?').run(key);
       q('INSERT INTO ranking_lists(key,category,weapon,gender,season,file,file_hash,updated,count) VALUES(?,?,?,?,?,?,?,?,?)')
         .run(key, slug(category), slug(weapon), g, season, file, fh, Date.now(), entries.length);
-      const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos) VALUES(?,?,?,?,?,?)');
+      const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos,code) VALUES(?,?,?,?,?,?,?)');
       let added = 0, changed = 0;
       for (const e of entries) {
-        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos);
+        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos, e.code || '');
         if (!old.has(e.key)) added++; else if (old.get(e.key) !== e.pos) changed++;
       }
       const seen = new Set(entries.map(e => e.key));
@@ -140,6 +144,8 @@ function open(file) {
       const w = terms.map(() => `club_key LIKE ? ESCAPE '\\'`).join(' AND ');
       return q(`SELECT club_key key, MAX(club) name, COUNT(DISTINCT name_key) count FROM ranking_entries WHERE club_key<>'' AND ${w} GROUP BY club_key LIMIT ?`).all(...terms.map(like), limit);
     },
+    clubCodeByAthlete: code => q("SELECT club FROM ranking_entries WHERE code=? AND club<>'' LIMIT 1").get(String(code))?.club || '',
+    athleteCodes: () => q("SELECT code, club FROM ranking_entries WHERE code<>'' AND club<>'' GROUP BY code").all(),
     rankedPerson: nk => q(`SELECT MAX(name) name, MAX(club) club FROM ranking_entries WHERE name_key=?`).get(nk),
     clubRanked: ck => q(`SELECT name_key key, MAX(name) name, MAX(club) club FROM ranking_entries WHERE club_key=? GROUP BY name_key`).all(ck),
     clubOfRanked: nk => q(`SELECT club FROM ranking_entries WHERE name_key=? AND club<>'' ORDER BY pos LIMIT 1`).get(nk)?.club || '',
@@ -147,10 +153,11 @@ function open(file) {
 
   // --- Società (codice Federscherma → nome) ---
   Object.assign(S, {
-    importClubs: tx(rows => {
-      q('DELETE FROM clubs').run();
-      const ins = q('INSERT OR REPLACE INTO clubs(code_key,code,name,name_key,city) VALUES(?,?,?,?,?)');
-      for (const c of rows) ins.run(R.norm(c.code), c.code, c.name, R.norm(c.name), c.city || '');
+    // source 'manual' = rankings/societa.csv (prevale), 'auto' = ricavato dai PDF dei risultati.
+    importClubs: tx((rows, source = 'manual') => {
+      q('DELETE FROM clubs WHERE source=?').run(source);
+      const ins = q(`INSERT OR ${source === 'manual' ? 'REPLACE' : 'IGNORE'} INTO clubs(code_key,code,name,name_key,city,source) VALUES(?,?,?,?,?,?)`);
+      for (const c of rows) ins.run(R.norm(c.code), c.code, c.name, R.norm(c.name), c.city || '', source);
       return rows.length;
     }),
     clubRow: codeKey => q('SELECT code, name, city FROM clubs WHERE code_key=?').get(codeKey),

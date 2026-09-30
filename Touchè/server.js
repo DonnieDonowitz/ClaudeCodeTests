@@ -72,7 +72,7 @@ function progress(c) {
   const all = [...bouts, ...de];
   return { done: all.filter(m => m.forfeit || m.sa != null).length, total: all.length };
 }
-const status = c => c.de ? (c.de.rounds.at(-1)[0].winner ? 'concluso' : 'tabellone') : c.pools ? 'gironi' : 'iscrizioni';
+const status = c => c.imported ? 'concluso' : c.de ? (c.de.rounds.at(-1)[0].winner ? 'concluso' : 'tabellone') : c.pools ? 'gironi' : 'iscrizioni';
 // Società: il testo libero delle gare si collega al codice Federscherma se il nome coincide con quello in societa.csv.
 const clubKeyOf = text => S.clubKeyByName(R.norm(text)) || R.norm(text);
 const clubInfo = code => { const r = S.clubRow(R.norm(code)), p = provinceOf(code); return { name: r ? r.name : code, code, city: r?.city || '', province: p ? p.name : '' }; };
@@ -93,7 +93,8 @@ function view(c, req) {
   out.referee = isAssigned(u, c) ? { id: u.id, name: u.name } : null;
   out.athletes = c.athletes.map(a => ({ ...a, clubKey: a.club ? clubKeyOf(a.club) : '' }));
   out.cut = cutInfo(c);
-  if (c.pools) {
+  if (c.imported) { out.final = c.imported.final; out.source = { name: 'Federscherma', url: c.imported.url, provisional: c.imported.state === 'provvisoria' }; delete out.imported; }
+  else if (c.pools) {
     out.ranking = E.ranking(c.pools, active(c), c.lots).map((r, i) => ({ ...r, qualified: i < out.cut.qualify }));
     if (c.de) { const ids = out.ranking.map(r => r.id); out.final = E.finalRanking(c.de, ids, ids.slice(out.cut.qualify)); }
   }
