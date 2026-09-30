@@ -208,3 +208,30 @@ header{height:76px}
 .search{top:0}#sugg{top:46px}
 @media(max-width:700px){header{height:auto}.logo img{width:48px;height:48px}.logo{font-size:26px}}
 h2{scroll-margin-top:84px}
+
+/* Selezione categoria / arma dentro una gara */
+.variants{margin:14px 0 4px;display:grid;gap:8px}
+.vrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.vrow>span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);width:72px}
+.chip{padding:6px 14px;border-radius:99px;background:var(--fill);color:var(--ink);font-size:14px;font-weight:500;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--gold-b);font-weight:600}
+
+/* Ranking */
+.rk-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.rk-head input{flex:0 1 280px;height:36px;border:0;border-radius:99px;background:var(--fill);padding:0 14px;font:inherit;font-size:15px}
+table.rk td.pts,.bd .pts{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.tr{font-size:12px;font-weight:700}.tr.up{color:#2e7d32}.tr.dn{color:var(--red)}.tr.eq{color:var(--ink2)}
+tr.hlrow td{background:var(--gold-l)}
+tr.bdrow td{background:#fcfaf4;padding:10px 16px}
+.bd-g h4{margin:8px 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+.bd{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--sep);font-size:14px;text-align:left}
+.bd small{display:block;color:var(--ink2);font-size:12px}
+.bd.tot{border:0;font-weight:700;margin-top:4px}
+details.card summary{cursor:pointer}
+
+/* Footer e pagine legali */
+footer.site{max-width:900px;margin:0 auto;padding:22px 16px 40px;border-top:1px solid var(--gold-l);color:var(--ink2);font-size:13px;display:grid;gap:6px;text-align:center}
+footer.site a{color:var(--gold);font-weight:600}
+.legal{max-width:760px;margin:0 auto;padding:8px 16px 40px;line-height:1.55}
+.legal h2{margin-top:28px}.legal h1{margin-bottom:6px}.legal li{margin:4px 0}
+.legal table{width:100%;border-collapse:collapse;font-size:14px}.legal td,.legal th{border-bottom:1px solid var(--sep);padding:8px;text-align:left;vertical-align:top}

@@ -6,7 +6,7 @@
     "start": "node server.js",
     "regen-brackets": "node scripts/regenerate-brackets.js",
     "seed": "node scripts/seed.js",
-    "test": "node --test test/engine.test.js test/ranking.test.js test/store.test.js test/api.test.js test/results.test.js",
+    "test": "node --test test/engine.test.js test/ranking.test.js test/store.test.js test/api.test.js test/results.test.js test/detail.test.js",
     "rankings": "node scripts/import-rankings.js",
     "create-user": "node scripts/create-user.js",
     "results": "node scripts/import-results.js",

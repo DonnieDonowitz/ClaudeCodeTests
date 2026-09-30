@@ -5,9 +5,13 @@ const STATUS = { iscrizioni: 'Iscrizioni', gironi: 'Gironi', tabellone: 'Tabello
 const REGIONS = { 'abruzzo': 'Abruzzo', 'basilicata': 'Basilicata', 'calabria': 'Calabria', 'campania': 'Campania', 'emilia-romagna': 'Emilia-Romagna', 'friuli-venezia-giulia': 'Friuli-Venezia Giulia', 'lazio': 'Lazio', 'liguria': 'Liguria', 'lombardia': 'Lombardia', 'marche': 'Marche', 'molise': 'Molise', 'piemonte': 'Piemonte', 'puglia': 'Puglia', 'sardegna': 'Sardegna', 'sicilia': 'Sicilia', 'toscana': 'Toscana', 'trentino-alto-adige': 'Trentino-Alto Adige', 'umbria': 'Umbria', 'valle-d-aosta': 'Valle d\'Aosta', 'veneto': 'Veneto' };
 const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master', 'Bambini', 'Giovanissimi', 'Ragazzi', 'Allievi', 'Master Cat. 0', 'Master Cat. 1', 'Master Cat. 2', 'Master Cat. 3', 'Master Cat. 4'];
 const cslug = x => String(x).toLowerCase().trim().replace(/[\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-const catLabel = x => CATEGORIES.find(c => cslug(c) === x) || x;
+const catLabel = x => CATEGORIES.find(c => cslug(c) === cslug(x)) || String(x).replace(/-/g, ' ').replace(/^\w/, m => m.toUpperCase());
 const ZONE = { nazionale: 'Nazionali', master: 'Master', ...REGIONS };
 const ABBR = { nazionale: 'FIS', master: 'AMIS', 'emilia-romagna': 'EMR', 'friuli-venezia-giulia': 'FVG', 'trentino-alto-adige': 'TAA', 'valle-d-aosta': 'VDA' };
+// Il contenuto viene sostituito solo se è cambiato: gli aggiornamenti periodici non ridisegnano la pagina inutilmente.
+let lastHtml = '';
+const APP = { set html(h) { if (h !== lastHtml) { $('#app').innerHTML = h; lastHtml = h; } } };
+let pollFast = false; // aggiornamento rapido solo se c'è una gara in corso
 let me = null, timer = null, tab = 'atleti', HL = '', LOGOS = {};
 const wkey0 = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const wkey = s => wkey0(s).split(' ').filter(Boolean).sort().join(' ');
@@ -28,22 +32,32 @@ const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 
 const ROLE = { admin: 'Amministratore', regional: 'Admin regionale', director: 'Direttore di gara', referee: 'Arbitro' };
 function nav() {
   const l = (h, t) => `<a href="#/${h}">${t}</a>`;
-  $('#nav').innerHTML = !me ? l('login', 'Accedi')
+  $('#nav').innerHTML = l('ranking', 'Ranking') + (!me ? l('login', 'Accedi')
     : `${me.role === 'admin' ? l('admin', 'Account') : me.role === 'regional' ? l('admin', 'Account') : ''}${l('gestione', me.role === 'referee' ? 'Le mie gare' : me.role === 'director' ? 'Le mie gare' : 'Gestione')}
-    <a class="mute" href="#/account" title="${esc(ROLE[me.role])}${me.zone ? ' · ' + esc(ZONE[me.zone]) : ''}">${esc(me.name)}</a><a href="#" id="out">Esci</a>`;
+    <a class="mute" href="#/account" title="${esc(ROLE[me.role])}${me.zone ? ' · ' + esc(ZONE[me.zone]) : ''}">${esc(me.name)}</a><a href="#" id="out">Esci</a>`);
   const o = $('#out'); if (o) o.onclick = async e => { e.preventDefault(); await api('POST', '/logout'); me = null; nav(); location.hash = '#/'; };
 }
 
 /* ---------- Home / dashboard ---------- */
+const WNAME = { spada: 'Spada', fioretto: 'Fioretto', sciabola: 'Sciabola' };
+const vLabel = v => `${WNAME[v.weapon] || v.weapon} ${v.gender === 'F' ? 'femminile' : 'maschile'}`;
+// Riga descrittiva di una gara; le gare raggruppate riassumono categorie e armi delle varianti.
+function compMeta(c) {
+  if (!c.variants) return [ZONE[c.zone], c.weapon, `${c.category} ${c.gender || ''}`.trim(), c.place, c.date];
+  const cats = [...new Set(c.variants.map(v => v.category))], wps = [...new Set(c.variants.map(v => v.weapon))];
+  const when = c.dateTo && c.dateTo !== c.dateFrom ? `${c.dateFrom} → ${c.dateTo}` : c.date;
+  return [ZONE[c.zone], cats.length > 1 ? `${cats.length} categorie` : catLabel(cslug(cats[0])), wps.map(w => WNAME[w]).join(', '), c.place, when];
+}
 let homeLimit = 30, homeZone;
 async function home(zone, poll) {
   if (zone !== homeZone) { homeZone = zone; homeLimit = 30; }
   const [list, live] = await Promise.all([api('GET', '/competitions'), api('GET', '/live')]);
   const count = {}, active = {};
   list.forEach(c => { count[c.zone] = (count[c.zone] || 0) + 1; if (c.status === 'gironi' || c.status === 'tabellone') active[c.zone] = true; });
+  pollFast = Object.keys(active).length > 0;
   const tile = (z, big) => `<a class="zone ${big ? 'big' : ''} ${zone === z ? 'on' : ''} ${count[z] ? '' : 'zero'}" href="#/${zone === z ? '' : 'z/' + z}">${logo(z)}<b>${active[z] ? '<i class="dot"></i>' : ''}${esc(ZONE[z])}</b><span>${count[z] || 0} ${count[z] === 1 ? "gara" : "gare"}</span></a>`;
   const shown = list.filter(c => !zone || c.zone === zone), feed = live.filter(f => !zone || f.zone === zone);
-  $('#app').innerHTML = `<h1>Competizioni</h1><p class="mute">Tutta la scherma italiana, in tempo reale.</p>
+  APP.html = `<h1>Competizioni</h1><p class="mute">Tutta la scherma italiana, in tempo reale.</p>
     <h2>Circuiti</h2><div class="zones top">${tile('nazionale', 1)}${tile('master', 1)}</div>
     <h2>Regioni</h2><div class="zones">${Object.keys(REGIONS).map(z => tile(z)).join('')}</div>
     ${feed.length ? `<h2><i class="dot"></i>Risultati in diretta</h2><div class="list feed">${feed.slice(0, 8).map(f => {
@@ -52,7 +66,7 @@ async function home(zone, poll) {
         <small>${esc(f.phase)} · ${esc(f.c)}${f.ref ? ' · Arb. ' + esc(f.ref) : ''}</small></div><span class="mute">${ago(f.t)}</span></div>`; }).join('')}</div>` : ''}
     <h2 id="zlist">${zone ? logo(zone, 1) + esc(ZONE[zone]) + ` · ${shown.length} gare` : 'Tutte le gare'}</h2><div class="list">${shown.slice(0, homeLimit).map(c => {
       const pr = c.progress, live = c.status === 'gironi' || c.status === 'tabellone';
-      return `<a class="item" href="#/c/${c.id}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${[ZONE[c.zone], c.weapon, `${c.category} ${c.gender || ''}`.trim(), c.place, c.date].filter(Boolean).map(esc).join(' · ')}</div></div>
+      return `<a class="item" href="#/c/${c.id}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${compMeta(c).filter(Boolean).map(esc).join(' · ')}</div></div>
       <div><span class="badge ${c.status}">${live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span>${live && pr.total ? `<div class="bar"><i style="width:${Math.round(100 * pr.done / pr.total)}%"></i></div>` : `<span class="mute">${c.athletes} atleti</span>`}</div></a>`; }).join('') || '<p class="mute" style="padding:16px;margin:0">Nessuna gara in questa zona.</p>'}</div>${shown.length > homeLimit ? `<p style="text-align:center"><button id="more">Mostra altre ${Math.min(30, shown.length - homeLimit)} di ${shown.length - homeLimit}</button></p>` : ''}`;
   const more = $('#more'); if (more) more.onclick = () => { homeLimit += 30; home(zone, true); };
   if (zone && !poll) $('#zlist')?.scrollIntoView({ block: 'start' });
@@ -60,7 +74,7 @@ async function home(zone, poll) {
 
 /* ---------- Accesso unico per admin, admin regionali, direttori di gara e arbitri ---------- */
 function loginView() {
-  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h1>Accedi</h1>
+  APP.html = `<div class="card" style="max-width:420px;margin:30px auto"><h1>Accedi</h1>
   <p class="mute">Direttori di gara, arbitri e amministratori accedono da qui con l'account creato per loro. Gli account si richiedono all'amministratore o al proprio comitato regionale.</p>
   <form id="f" style="display:grid;gap:10px"><input name="email" type="email" placeholder="Email" autocomplete="username" required>
   <input name="password" type="password" placeholder="Password" autocomplete="current-password" required><button class="primary">Entra</button></form></div>`;
@@ -68,7 +82,7 @@ function loginView() {
 }
 function accountView() {
   if (!me) return location.hash = '#/login';
-  $('#app').innerHTML = `<h1>${esc(me.name)}</h1><p class="mute">${esc(ROLE[me.role])}${me.zone ? ' · ' + esc(ZONE[me.zone]) : ''} · ${esc(me.email)}</p>
+  APP.html = `<h1>${esc(me.name)}</h1><p class="mute">${esc(ROLE[me.role])}${me.zone ? ' · ' + esc(ZONE[me.zone]) : ''} · ${esc(me.email)}</p>
   <div class="card" style="max-width:420px"><label>Cambia password</label><form id="f" style="display:grid;gap:10px"><input name="current" type="password" placeholder="Password attuale" autocomplete="current-password" required>
   <input name="password" type="password" placeholder="Nuova password (min. 8 caratteri)" autocomplete="new-password" minlength="8" required><button class="primary">Salva</button></form></div>`;
   $('#f').onsubmit = act(async e => { e.preventDefault(); await api('POST', '/me/password', Object.fromEntries(new FormData(e.target))); e.target.reset(); alert('Password aggiornata'); });
@@ -82,7 +96,7 @@ async function adminView() {
   const roles = adm ? ['director', 'referee', 'regional', 'admin'] : ['director', 'referee'];
   const zoneSel = (name, cur, blank) => `<select name="${name}" ${adm ? '' : 'disabled'}><option value="">${blank}</option>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === (adm ? cur : me.zone) ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`;
   const shown = users.filter(u => !userFilter || u.role === userFilter);
-  $('#app').innerHTML = `<h1>Account</h1><p class="mute">${adm ? 'Crea e gestisci gli account di amministratori regionali, direttori di gara e arbitri.' : `Crea e gestisci direttori di gara e arbitri di ${esc(ZONE[me.zone])}.`}</p>
+  APP.html = `<h1>Account</h1><p class="mute">${adm ? 'Crea e gestisci gli account di amministratori regionali, direttori di gara e arbitri.' : `Crea e gestisci direttori di gara e arbitri di ${esc(ZONE[me.zone])}.`}</p>
   <div class="card"><label>Nuovo account</label><form id="nu" class="grid">
     <div><label>Nome e cognome</label><input name="name" required></div><div><label>Email</label><input name="email" type="email" required></div>
     <div><label>Password iniziale</label><input name="password" minlength="8" placeholder="min. 8 caratteri" required></div>
@@ -108,7 +122,7 @@ async function manageView() {
   if (!me) return location.hash = '#/login';
   const [list, dirs] = await Promise.all([api('GET', '/manage/competitions' + (me.role === 'admin' && gzone ? '?zone=' + gzone : '')), ['admin', 'regional'].includes(me.role) ? api('GET', '/users').then(u => u.filter(x => x.role === 'director' && x.active)) : []]);
   const mgr = ['admin', 'regional'].includes(me.role), title = me.role === 'regional' ? `Gestione ${esc(ZONE[me.zone])}` : me.role === 'admin' ? 'Gestione gare' : 'Le mie gare';
-  $('#app').innerHTML = `<div class="row2" style="justify-content:space-between"><h1>${me.role === 'regional' ? logo(me.zone, 1) : ''}${title}</h1>${me.role === 'referee' ? '' : '<a class="btn primary" href="#/new">+ Nuova gara</a>'}</div>
+  APP.html = `<div class="row2" style="justify-content:space-between"><h1>${me.role === 'regional' ? logo(me.zone, 1) : ''}${title}</h1>${me.role === 'referee' ? '' : '<a class="btn primary" href="#/new">+ Nuova gara</a>'}</div>
   ${me.role === 'admin' ? `<p><select id="gz"><option value="">Tutte le zone</option>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === gzone ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></p>` : ''}
   ${me.role === 'referee' ? '<p class="mute">Le gare in cui sei stato assegnato: apri la gara e tocca un assalto per inserire il risultato.</p>' : ''}
   <div class="card" style="overflow-x:auto"><table><tr><th class="l">Gara</th>${me.role === 'admin' ? '<th class="l">Zona</th>' : ''}<th class="l">Data</th><th class="l">Stato</th>${me.role !== 'referee' ? '<th class="l">Direttore</th>' : ''}<th></th></tr>${list.map(c => `<tr>
@@ -141,7 +155,7 @@ async function newView() {
   if (!me || me.role === 'referee') return location.hash = '#/login';
   const fixed = me.role === 'regional' || (me.role === 'director' && me.zone), mgr = ['admin', 'regional'].includes(me.role);
   const dirs = mgr ? (await api('GET', '/users')).filter(u => u.role === 'director' && u.active) : [];
-  $('#app').innerHTML = `<h1>Nuova gara</h1><div class="card"><form id="f" class="grid">
+  APP.html = `<h1>Nuova gara</h1><div class="card"><form id="f" class="grid">
   <div><label>Nome</label><input name="name" required></div><div><label>Data</label><input type="date" name="date"></div>
   <div><label>Zona</label><select name="zone" ${fixed ? 'disabled' : ''}>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === (fixed ? me.zone : 'nazionale') ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
   ${mgr ? `<div><label>Direttore di gara</label><select name="ownerId"><option value="">Da assegnare</option>${dirs.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select></div>` : ''}
@@ -158,7 +172,8 @@ async function compView(id, t, poll) {
   const c = await api('GET', '/competitions/' + id);
   if (poll && (document.activeElement?.matches('textarea,select,input:not([data-live])') || document.querySelector('dialog[open]'))) return;
   tab = t && t !== '_' ? t : c.source ? 'finale' : tab;
-  const avail = ['atleti', ...(c.pools ? ['gironi', 'classifica'] : []), ...(c.de ? ['tabellone'] : []), ...(c.final?.length ? ['finale'] : []), ...(c.canEdit ? ['arbitri'] : [])];
+  pollFast = c.status === 'gironi' || c.status === 'tabellone';
+  const avail = ['atleti', ...(c.pools ? ['gironi', 'classifica'] : []), ...(c.de ? ['tabellone'] : []), ...(c.final?.length ? ['finale'] : []), ...(c.canEdit && !c.source ? ['arbitri'] : [])];
   if (!avail.includes(tab)) tab = avail.filter(x => x !== 'arbitri').at(-1);
   const name = Object.fromEntries(c.athletes.map(a => [a.id, a]));
   const n = id => name[id] ? hl(name[id].name) : '<span class="mute">—</span>';
@@ -168,10 +183,11 @@ async function compView(id, t, poll) {
   const body = { atleti: () => athletesTab(c), gironi: () => poolsTab(c, n), classifica: () => rankTab(c, n), tabellone: () => bracketTab(c, n), finale: () => finalTab(c, n), arbitri: () => refereesTab(c) }[tab]();
   const mineP = c.referee ? (c.pools || []).filter(p => p.refereeId === c.referee.id).length : 0;
   const mineM = c.referee ? (c.de?.rounds || []).flat().filter(m => m.refereeId === c.referee.id && !m.winner).length : 0;
-  $('#app').innerHTML = `<div class="row2" style="justify-content:space-between"><div><h1>${esc(c.name)}</h1>
-    <div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender || 'M')} · ${esc(c.place)} · ${esc(c.date)} · ${c.source ? `fonte: <a href="${esc(c.source.url)}" target="_blank" rel="noopener">${esc(c.source.name)}</a>${c.source.provisional ? ' (classifica provvisoria)' : ''}` : 'direttore: ' + esc(c.owner || '—')}</div></div>
+  APP.html = `<div class="row2" style="justify-content:space-between"><div><h1>${esc(c.name)}</h1>
+    <div class="mute">${logo(c.zone, 1)}${[ZONE[c.zone], c.weapon, `${c.category} ${c.gender || 'M'}`, c.place, c.date].filter(Boolean).map(esc).join(' · ')} · ${c.source ? `fonte: <a href="${esc(c.source.url)}" target="_blank" rel="noopener">${esc(c.source.name)}</a>${c.source.provisional ? ' (classifica provvisoria)' : ''}` : 'direttore: ' + esc(c.owner || '—')}</div></div>
     <span class="badge ${c.status}">${STATUS[c.status]}</span></div>
     ${c.referee ? `<div class="banner">Ciao <b>${esc(c.referee.name)}</b>: ${mineP} gironi e ${mineM} assalti del tabellone ti aspettano. Tocca una cella della griglia (o un punteggio nel tabellone) per inserire il risultato.</div>` : ''}
+    ${variantPicker(c, id)}
     <div class="tabs">${avail.map(x => `<a href="#/c/${id}/${x}${HL ? '/' + encodeURIComponent(HL) : ''}" class="${x === tab ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</a>`).join('')}</div>${body}`;
   bind(c);
   if (keep) { const el = document.querySelector('input[data-live]' + keep.sel); if (el) { el.value = keep.v; el.focus(); } }
@@ -186,11 +202,23 @@ function cutBanner(c) {
     : `<div class="banner cut">Nessuna eliminazione dopo i gironi: tutti i ${n} atleti passano al tabellone.</div>`;
 }
 
+// Gara con più file (categorie, armi, sessi): si sceglie prima la categoria e poi arma/sesso, poi si vedono classifica e partecipanti.
+function variantPicker(c, id) {
+  const sib = c.siblings; if (!sib || sib.length < 2) return '';
+  const cats = [...new Set(sib.map(v => v.category))], hasCats = cats.length > 1;
+  const ws = sib.filter(v => v.category === c.category), combos = [...new Map(sib.map(v => [v.weapon + v.gender, v])).values()];
+  const href = v => `#/c/${v.id}/${tab === 'atleti' ? 'atleti' : 'finale'}${HL ? '/' + encodeURIComponent(HL) : ''}`;
+  const target = (cat, wg) => sib.find(v => v.category === cat && v.weapon + v.gender === wg) || sib.find(v => v.category === cat) || sib[0];
+  const cur = c.weapon + (c.gender || 'M');
+  return `<div class="variants">${hasCats ? `<div class="vrow"><span>Categoria</span>${cats.map(cat => `<a class="chip ${cat === c.category ? 'on' : ''}" href="${href(target(cat, cur))}">${esc(catLabel(cslug(cat)))}</a>`).join('')}</div>` : ''}
+    ${combos.length > 1 ? `<div class="vrow"><span>Arma</span>${combos.map(v => { const t = sib.find(x => x.category === c.category && x.weapon + x.gender === v.weapon + v.gender) || v; return `<a class="chip ${t.weapon + t.gender === cur ? 'on' : ''}" href="${href(t)}">${esc(vLabel(v))}</a>`; }).join('')}</div>` : ''}</div>`;
+}
+
 function athletesTab(c) {
   if (c.source) { // gara importata: elenco dei partecipanti in ordine di classifica finale
     const pos = Object.fromEntries((c.final || []).map(f => [f.id, f.pos]));
     const list = [...c.athletes].sort((a, b) => (pos[a.id] ?? 1e9) - (pos[b.id] ?? 1e9));
-    return `<div class="card"><table><tr><th>Pos</th><th class="l">Atleta</th><th class="l">Società</th></tr>` + list.map(a => `<tr><td>${pos[a.id] ?? ''}</td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>` : ''}</td></tr>`).join('') + `</table><p class="hint">${list.length} partecipanti.</p></div>` +
+    return (c.pools ? cutBanner(c) : '') + `<div class="card"><table><tr><th>Pos</th><th class="l">Atleta</th><th class="l">Società</th></tr>` + list.map(a => `<tr><td>${pos[a.id] ?? ''}</td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>` : ''}</td></tr>`).join('') + `</table><p class="hint">${list.length} partecipanti.</p></div>` +
       (c.canEdit ? '<button class="danger small" id="delComp">Elimina gara</button>' : '');
   }
   const e = c.canEdit && !c.pools, ri = c.rankingInfo;
@@ -215,13 +243,13 @@ function poolsTab(c, n) {
   const rk = Object.fromEntries(c.ranking.map((r, i) => [r.id, i]));
   const club = Object.fromEntries(c.athletes.map(a => [a.id, a.club]));
   return cutBanner(c) + `<div class="pools">` + c.pools.map(p => {
-    const mine = c.referee && p.refereeId === c.referee.id, edit = !c.de && (c.canEdit || mine), A = p.athletes;
+    const mine = c.referee && p.refereeId === c.referee.id, edit = !c.source && !c.de && (c.canEdit || mine), A = p.athletes;
     const order = [...A].sort((x, y) => rk[x] - rk[y]), any = A.some(a => st[a].m);
     const cell = (i, j) => {
       const b = p.bouts.find(x => (x.a === A[i] && x.b === A[j]) || (x.a === A[j] && x.b === A[i]));
       if (!b || b.sa == null) return { t: '', v: false };
-      const own = b.a === A[i] ? b.sa : b.sb, opp = b.a === A[i] ? b.sb : b.sa;
-      return { t: own > opp ? (own === 5 ? 'V' : 'V' + own) : String(own), v: own > opp };
+      const own = b.a === A[i] ? b.sa : b.sb, opp = b.a === A[i] ? b.sb : b.sa, won = own > opp || (own === opp && b.w === (b.a === A[i] ? 'a' : 'b'));
+      return { t: won ? (own === 5 ? 'V' : 'V' + own) : String(own), v: won };
     };
     const rows = A.map((a, i) => `<tr><td class="n">${i + 1}</td><td class="nm">${n(a)}<small>${esc(club[a])}</small></td>${A.map((_, j) => {
       if (i === j) return '<td class="x"></td>';
@@ -229,10 +257,10 @@ function poolsTab(c, n) {
       return `<td class="c ${x.v ? 'v' : ''} ${edit ? 'e' : ''}" ${edit ? `data-p="${p.index}" data-a="${a}" data-b="${A[j]}"` : ''}>${x.t}</td>`;
     }).join('')}<td class="s">${st[a].v}</td><td class="s">${st[a].m}</td><td class="s">${st[a].m ? (st[a].v / st[a].m).toFixed(2) : ''}</td><td class="s">${st[a].ts}</td><td class="s">${st[a].tr}</td><td class="s">${st[a].m ? (st[a].ind > 0 ? '+' : '') + st[a].ind : ''}</td><td class="s pl">${any ? order.indexOf(a) + 1 : ''}</td></tr>`).join('');
     return `<div class="card ${mine ? 'mine' : ''}"><div class="pool-h"><b>Girone ${p.index}</b>
-      ${c.canEdit && !c.de ? refSelect(c, 'data-refpool', p.index, p.refereeId) : `<span class="ref">${p.refereeId ? 'Arbitro: <b>' + esc(refName(c, p.refereeId) || '') + '</b>' : ''}</span>`}</div>
+      ${c.canEdit && !c.source && !c.de ? refSelect(c, 'data-refpool', p.index, p.refereeId) : `<span class="ref">${p.refereeId ? 'Arbitro: <b>' + esc(refName(c, p.refereeId) || '') + '</b>' : ''}</span>`}</div>
       <div class="mx-wrap"><table class="mx"><tr><th>#</th><th class="l">Atleta</th>${A.map((_, i) => `<th>${i + 1}</th>`).join('')}<th>V</th><th>M</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th><th>Pl</th></tr>${rows}</table></div>
       ${edit ? '<p class="hint">Tocca una cella per inserire le stoccate dell\'assalto.</p>' : ''}</div>`;
-  }).join('') + `</div>` + (c.canEdit ? `<div class="card row2" style="margin-top:16px">
+  }).join('') + `</div>` + (c.canEdit && !c.source ? `<div class="card row2" style="margin-top:16px">
     ${!c.de ? `<button class="primary" id="genDE">Genera tabellone${c.cut?.eliminated ? ` (passano ${c.cut.qualify})` : ''}</button><button class="danger" id="resetPools">Rigenera gironi</button>` : '<span class="mute">Tabellone generato: gironi bloccati.</span>'}</div>` : '');
 }
 
@@ -250,7 +278,7 @@ function roundName(size, r) {
 let brRound = 'all';
 function bracketTab(c, n0) {
   const { size, rounds } = c.de, last = rounds.length - 1, champ = rounds[last][0].winner;
-  const pos = Object.fromEntries(c.ranking.map(r => [r.id, r.rank]));
+  const pos = Object.fromEntries((c.ranking || []).map(r => [r.id, r.rank]));
   // Posizione dopo i gironi davanti al nome.
   const n = id => (id ? `<i class="seed" title="Posizione dopo i gironi">${pos[id] ?? ''}</i>` : '') + n0(id);
   const isBye = (r, m) => r === 0 && (!m.a || !m.b);
@@ -258,9 +286,9 @@ function bracketTab(c, n0) {
 
   const card = (r, i, m, list) => {
     if (isBye(r, m)) return `<div class="match bye"><div class="row w"><span>${n(m.a || m.b)}</span><span class="mute">bye</span></div></div>`;
-    const mine = c.referee && m.refereeId === c.referee.id, ed = c.canEdit || mine;
+    const mine = c.referee && m.refereeId === c.referee.id, ed = !c.source && (c.canEdit || mine);
     const row = (id, s, w) => `<div class="row ${m.winner && m.winner === id ? 'w' : ''}"><span>${n(id)}</span><span>${m.forfeit ? (m.winner === id ? '<b>V*</b>' : '') : m.a && m.b && ed ? `<input data-live data-de="${r}/${i}" data-s="${s}" value="${w ?? ''}" inputmode="numeric">${c.canEdit ? ` <button class="small" data-ff="${r}/${i}" data-side="${s}" title="Vittoria a tavolino">F</button>` : ''}` : `<b>${w ?? ''}</b>`}</span></div>`;
-    const foot = m.a && m.b && !m.winner && c.canEdit ? refSelect(c, 'data-refde', `${r}/${i}`, m.refereeId) : m.refereeId ? `<span>Arbitro: <b>${esc(refName(c, m.refereeId) || '')}</b></span>` : '';
+    const foot = m.a && m.b && !m.winner && c.canEdit && !c.source ? refSelect(c, 'data-refde', `${r}/${i}`, m.refereeId) : m.refereeId ? `<span>Arbitro: <b>${esc(refName(c, m.refereeId) || '')}</b></span>` : m.ref || m.piste ? `<span>${m.ref ? 'Arbitro: <b>' + esc(m.ref) + '</b>' : ''}${m.piste ? ' · P.' + esc(m.piste) : ''}${m.time ? ' · ' + esc(m.time) : ''}</span>` : '';
     return `<div class="match ${mine ? 'mine' : ''}">${row(m.a, 'a', m.sa)}${row(m.b, 'b', m.sb)}</div>${foot ? `<div class="${list ? 'foot' : 'refl'}">${foot}</div>` : ''}`;
   };
 
@@ -280,7 +308,7 @@ function bracketTab(c, n0) {
       `<div class="slot ${r < last ? 'out ' + (i % 2 ? 'bot' : 'top') : ''}" ${r > 0 ? `style="flex:none;height:${r < last ? 104 * 2 ** r : 104}px"` : ''}>${r < last && i % 2 === 0 ? '<i class="dangle"></i>' : ''}${card(r, i, m, false)}</div>`).join('')}</div></div></div>`;
   }
   return (champ ? `<p class="podium">🏆 ${n0(champ)}</p>` : '') + sel + body +
-    (c.canEdit ? `<div class="card row2" style="margin-top:14px"><button class="danger" id="resetDE">Rigenera tabellone</button></div>` : '');
+    (c.canEdit && !c.source ? `<div class="card row2" style="margin-top:14px"><button class="danger" id="resetDE">Rigenera tabellone</button></div>` : '');
 }
 
 let refPool = [];
@@ -368,9 +396,59 @@ function bind(c) {
 }
 
 
+
+/* ---------- Ranking Federscherma: classifiche complete con il dettaglio dei punti per gara ---------- */
+const fmtDate = d => (d ? d.split('-').reverse().join('/') : '');
+const fmtPts = v => (v == null ? '' : v.toLocaleString('it-IT', { maximumFractionDigits: 2 }));
+const GROUP = { reg: 'Qualificazioni regionali / di zona', naz: 'Prove nazionali', fin: 'Campionati e fasi finali', int: 'Gare internazionali' };
+let rkLists = null, rkQuery = '', rkOpen = new Set();
+async function rankingView(key, athlete) {
+  rkLists ||= await api('GET', '/rankings');
+  if (!rkLists.length) { APP.html = '<h1>Ranking</h1><p class="mute">Nessun ranking importato.</p>'; return; }
+  key = key ? decodeURIComponent(key) : (rkLists.find(l => l.key === 'assoluti|spada|m') || rkLists[0]).key;
+  const cur = rkLists.find(l => l.key === key) || rkLists[0];
+  const params = new URLSearchParams(); if (rkQuery) params.set('q', rkQuery); if (athlete) params.set('a', decodeURIComponent(athlete));
+  const off = +(sessionStorage.getItem('rkOff:' + cur.key) || 0); if (!athlete && !rkQuery && off) params.set('offset', off);
+  const d = await api('GET', `/rankings/${encodeURIComponent(cur.key)}?${params}`);
+  const hlKey = athlete ? decodeURIComponent(athlete) : '';
+  if (hlKey) rkOpen.add(hlKey);
+  const cats = [...new Set(rkLists.map(l => l.category))].sort((a, b) => CATEGORIES.findIndex(c => cslug(c) === a) - CATEGORIES.findIndex(c => cslug(c) === b));
+  const combos = rkLists.filter(l => l.category === cur.category);
+  const go = l => `#/ranking/${encodeURIComponent(l.key)}`;
+  const pick = (cat) => rkLists.find(l => l.category === cat && l.weapon === cur.weapon && l.gender === cur.gender) || rkLists.find(l => l.category === cat);
+  const used = d.columns.map((c, i) => ({ ...c, i })).filter(c => d.rows.some(r => r.scores?.[c.i]));
+  const upd = d.as_of ? `Aggiornato al <b>${fmtDate(d.as_of)}</b>` : d.edition ? `Ranking <b>${esc(d.edition.toLowerCase())}</b>` : '';
+  const breakdown = r => {
+    const parts = d.columns.map((c, i) => ({ ...c, v: r.scores?.[i] })).filter(c => c.v);
+    if (!parts.length) return '<p class="mute" style="margin:0">Nessun dettaglio disponibile.</p>';
+    const groups = {}; parts.forEach(c => (groups[c.group] ||= []).push(c));
+    return Object.entries(groups).map(([g, list]) => `<div class="bd-g"><h4>${esc(GROUP[g] || '')}</h4>${list.map(c => `<div class="bd"><span><b>${esc(c.code)}</b> ${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span><span class="pts">${fmtPts(c.v)}</span></div>`).join('')}</div>`).join('') +
+      `<div class="bd tot"><span>Totale</span><span class="pts">${fmtPts(r.total)}</span></div>`;
+  };
+  const trend = r => (r.prev == null ? '' : r.prev === r.pos ? '<span class="tr eq">=</span>' : r.prev > r.pos ? `<span class="tr up">▲ ${r.prev - r.pos}</span>` : `<span class="tr dn">▼ ${r.pos - r.prev}</span>`);
+  APP.html = `<h1>Ranking</h1>
+    <div class="variants"><div class="vrow"><span>Categoria</span>${cats.map(cat => `<a class="chip ${cat === cur.category ? 'on' : ''}" href="${go(pick(cat))}">${esc(catLabel(cat))}</a>`).join('')}</div>
+    <div class="vrow"><span>Arma</span>${combos.map(l => `<a class="chip ${l.key === cur.key ? 'on' : ''}" href="${go(l)}">${esc(vLabel(l))}</a>`).join('')}</div></div>
+    <div class="card rk-head"><div><b>${esc(catLabel(cur.category))} · ${esc(vLabel(cur))}</b>${d.season ? ` · stagione ${esc(d.season)}` : ''}<div class="mute">${upd}${upd ? ' · ' : ''}${d.count} atleti · file ${esc(d.file || '')}</div></div>
+      <input id="rkq" type="search" placeholder="Cerca atleta o società" value="${esc(rkQuery)}"></div>
+    <div class="card" style="overflow-x:auto"><table class="rk"><tr><th>Pos</th><th></th><th class="l">Atleta</th><th class="l">Società</th><th>Anno</th><th>Punti</th><th></th></tr>
+    ${d.rows.map(r => `<tr class="${r.key === hlKey ? 'hlrow' : ''}" id="rk-${esc(r.key.replace(/\s/g, '_'))}"><td><b>${r.pos}</b></td><td>${trend(r)}</td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(r.key)}">${r.key === hlKey ? `<mark class="hl">${esc(r.name)}</mark>` : esc(r.name)}</a></td>
+      <td class="l">${r.club ? `<a class="pl" href="#/s/${encodeURIComponent(r.clubKey)}" title="${esc(r.club)}">${esc(r.clubName || r.club)}</a>` : ''}</td><td>${esc(r.born || '')}</td><td class="pts">${fmtPts(r.total)}</td>
+      <td><button class="small" data-bd="${esc(r.key)}">${rkOpen.has(r.key) ? 'Chiudi' : 'Dettaglio'}</button></td></tr>
+      ${rkOpen.has(r.key) ? `<tr class="bdrow"><td colspan="7">${breakdown(r)}</td></tr>` : ''}`).join('') || '<tr><td colspan="7" class="mute">Nessun atleta trovato.</td></tr>'}</table>
+    <div class="row2" style="justify-content:space-between;margin-top:10px"><button id="rkprev" ${d.offset ? '' : 'disabled'}>‹ Precedenti</button><span class="mute">${d.matches ? `${d.offset + 1}–${Math.min(d.offset + d.limit, d.matches)} di ${d.matches}` : ''}</span><button id="rknext" ${d.offset + d.limit < d.matches ? '' : 'disabled'}>Successivi ›</button></div></div>
+    <details class="card"><summary><b>Legenda delle gare</b> <span class="mute">(sigle delle colonne del file)</span></summary>${used.length ? used.map(c => `<div class="bd"><span><b>${esc(c.code)}</b> ${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</span><span class="mute">${esc(GROUP[c.group] || '')}</span></div>`).join('') : '<p class="mute">—</p>'}</details>`;
+  const page = o => { sessionStorage.setItem('rkOff:' + cur.key, o); history.replaceState(null, '', go(cur)); rankingView(cur.key); };
+  $('#rkprev').onclick = () => page(Math.max(0, d.offset - d.limit));
+  $('#rknext').onclick = () => page(d.offset + d.limit);
+  let t; $('#rkq').oninput = e => { clearTimeout(t); t = setTimeout(() => { rkQuery = e.target.value.trim(); sessionStorage.removeItem('rkOff:' + cur.key); rankingView(cur.key); }, 250); };
+  document.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => { const k = b.dataset.bd; rkOpen.has(k) ? rkOpen.delete(k) : rkOpen.add(k); rankingView(cur.key, athlete); });
+  if (hlKey) document.querySelector('.hlrow')?.scrollIntoView({ block: 'center' });
+}
+
 /* ---------- Ricerca, schermidori, società ---------- */
 const WEAPON = w => w[0].toUpperCase() + w.slice(1);
-const compRow = c => `<a class="item" href="#/c/${c.id}/_${HLNEXT ? '/' + encodeURIComponent(HLNEXT) : ''}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender)} · ${esc(c.place)} · ${esc(c.date)}</div></div>
+const compRow = c => `<a class="item" href="#/c/${c.id}/_${HLNEXT ? '/' + encodeURIComponent(HLNEXT) : ''}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${compMeta(c).filter(Boolean).map(esc).join(' · ')}</div></div>
   <div><span class="badge ${c.status}">${c.live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span></div></a>`;
 let HLNEXT = '';
 const athRow = a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${esc(a.club || 'Società non indicata')} · ${a.count} ${a.count === 1 ? 'gara' : 'gare'}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`;
@@ -382,7 +460,7 @@ async function searchView(q) {
   const r = await api('GET', '/search?q=' + encodeURIComponent(q));
   const sec = (t, arr, fn) => arr.length ? `<h2>${t}</h2><div class="list">${arr.map(fn).join('')}</div>` : '';
   const none = !r.competitions.length && !r.athletes.length && !r.clubs.length;
-  $('#app').innerHTML = `<h1>Risultati per “${esc(q)}”</h1>` + (q.trim().length < 2 ? '<p class="mute">Scrivi almeno due lettere.</p>' : none ? '<p class="mute">Nessun risultato: prova con un altro nome di gara, schermidore o società.</p>' : '') +
+  APP.html = `<h1>Risultati per “${esc(q)}”</h1>` + (q.trim().length < 2 ? '<p class="mute">Scrivi almeno due lettere.</p>' : none ? '<p class="mute">Nessun risultato: prova con un altro nome di gara, schermidore o società.</p>' : '') +
     sec('Competizioni', r.competitions, compRow) + sec('Schermidori', r.athletes, athRow) + sec('Società', r.clubs, clubRow);
 }
 async function athleteView(key) {
@@ -390,10 +468,10 @@ async function athleteView(key) {
   const a = await api('GET', '/athletes/' + encodeURIComponent(key));
   const live = a.competitions.filter(c => c.live), past = a.competitions.filter(c => !c.live);
   const rk = a.rankings.length ? `<div class="card"><table><tr><th class="l">Arma</th><th class="l">Categoria</th><th>Sesso</th><th>Ranking</th></tr>${a.rankings.map(r =>
-    `<tr><td class="l">${esc(WEAPON(r.weapon))}</td><td class="l">${esc(catLabel(r.category))}</td><td>${r.gender === 'F' ? 'F' : 'M'}</td><td><b>${r.pos}°</b></td></tr>`).join('')}</table>
+    `<tr><td class="l">${esc(WEAPON(r.weapon))}</td><td class="l">${esc(catLabel(r.category))}</td><td>${r.gender === 'F' ? 'F' : 'M'}</td><td><a href="#/ranking/${encodeURIComponent(`${r.category}|${r.weapon}|${r.gender.toLowerCase()}`)}/${encodeURIComponent(a.key)}"><b>${r.pos}°</b> · dettaglio</a></td></tr>`).join('')}</table>
     <p class="hint">Dai ranking Federscherma caricati (${[...new Set(a.rankings.map(r => r.file).filter(Boolean))].map(esc).join(', ') || 'file manuale'}).</p></div>`
     : '<p class="mute">Nessun ranking disponibile per questo schermidore nei file caricati.</p>';
-  $('#app').innerHTML = `<h1>${esc(a.name)}</h1><div class="mute">${a.club ? `Società: <a href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>${a.clubSub ? ` · ${esc(a.clubSub)}` : ''}` : 'Società non indicata'}</div>
+  APP.html = `<h1>${esc(a.name)}</h1><div class="mute">${a.club ? `Società: <a href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>${a.clubSub ? ` · ${esc(a.clubSub)}` : ''}` : 'Società non indicata'}</div>
     <h2>Ranking</h2>${rk}
     ${live.length ? `<h2><i class="dot"></i>In corso</h2><div class="list">${live.map(compRow).join('')}</div>` : ''}
     <h2>${live.length ? 'Gare precedenti e in programma' : 'Competizioni'}</h2><div class="list">${past.map(compRow).join('') || '<p class="mute" style="padding:16px;margin:0">Nessun’altra gara.</p>'}</div>`;
@@ -401,7 +479,7 @@ async function athleteView(key) {
 async function clubView(key) {
   key = decodeURIComponent(key); HLNEXT = '';
   const c = await api('GET', '/clubs/' + encodeURIComponent(key));
-  $('#app').innerHTML = `<h1>${esc(c.name)}</h1><p class="mute">${[c.code, c.sub, c.athletes.length + (c.athletes.length === 1 ? ' schermidore' : ' schermidori')].filter(Boolean).map(esc).join(' · ')}</p>
+  APP.html = `<h1>${esc(c.name)}</h1><p class="mute">${[c.code, c.sub, c.athletes.length + (c.athletes.length === 1 ? ' schermidore' : ' schermidori')].filter(Boolean).map(esc).join(' · ')}</p>
     <div class="list">${c.athletes.map(a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${a.rankings.map(r => `${esc(WEAPON(r.weapon))} ${esc(catLabel(r.category))} ${r.gender}: ${r.pos}°`).join(' · ') || `${a.count} ${a.count === 1 ? 'gara' : 'gare'}`}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`).join('')}</div>`;
 }
 
@@ -426,6 +504,10 @@ function initSearch() {
   document.addEventListener('click', e => { if (!e.target.closest('.search')) close(); });
 }
 
+// Aggiornamento periodico: 4 s con gare in corso, 20 s altrimenti; sospeso quando la scheda non è visibile.
+function schedule() { clearTimeout(timer); timer = setTimeout(() => (document.hidden ? schedule() : render(true)), pollFast ? 4000 : 20000); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && /^#\/(c\/|z\/|$)|^$/.test(location.hash)) render(true); });
+
 async function render(poll) {
   clearTimeout(timer);
   const [, sect, id, t, h] = location.hash.split('/');
@@ -436,13 +518,14 @@ async function render(poll) {
     else if (sect === 'admin') await adminView();
     else if (sect === 'gestione') await manageView();
     else if (sect === 'account') accountView();
+    else if (sect === 'ranking') await rankingView(id, t);
     else if (sect === 'cerca') await searchView(id);
     else if (sect === 'a') await athleteView(id);
     else if (sect === 's') await clubView(id);
     else if (sect === 'new') await newView();
-    else if (sect === 'c') { await compView(id, t, poll === true); if (HL && poll !== true) document.querySelector('.hl')?.scrollIntoView({ block: 'center' }); timer = setTimeout(() => render(true), 4000); return; }
-    else { await home(sect === 'z' ? id : null, poll === true); timer = setTimeout(() => render(true), 4000); }
-  } catch (e) { $('#app').innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
+    else if (sect === 'c') { await compView(id, t, poll === true); if (HL && poll !== true) document.querySelector('.hl')?.scrollIntoView({ block: 'center' }); schedule(); return; }
+    else { await home(sect === 'z' ? id : null, poll === true); schedule(); }
+  } catch (e) { APP.html = `<p class="msg">${esc(e.message)}</p>`; }
 }
 addEventListener('hashchange', () => render());
 initSearch();

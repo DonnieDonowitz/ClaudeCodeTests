@@ -1,7 +1,8 @@
 'use strict';
 // Legge i PDF dei risultati Federscherma ("Classifica definitiva | Spada maschile | …") e ne ricava gare, classifiche e società.
 const R = require('./ranking');
-const { pdfPages } = require('./pdf');
+const { pdfRaw, pageLines } = require('./pdf');
+const { parseDetail, buildDetail } = require('./resultsDetail');
 
 const WEAPONS = { fioretto: 'fioretto', spada: 'spada', sciabola: 'sciabola' };
 const SMALL = /(?<=.) (Di|Del|Della|Dei|Delle|Dello|Degli|Da|De|E|Al|Alla|Allo|Ai|In|Per|Su|Sul|Sulla|Con)(?= )/g;
@@ -57,20 +58,31 @@ function parseResults(pages) {
   // Altre sezioni del PDF (gironi, iscritti) riportano "COGNOME | NOME | SIGLA | data | NumFis": servono a collegare codice FIS e società.
   const sigla = {};
   for (const l of lines) { const m = /\| ([A-Z][A-Z0-9]{3,5}) \| \d\d\/\d\d\/\d\d(?:\d\d)? \| (\d{4,7})$/.exec(l.join(' | ')); if (m) sigla[m[2]] = m[1]; }
-  return { kind: 'individual', ...base, category, rows, sigla };
+  // Classifica iniziale per ranking: "progr. | SI/NO | posizione in ranking | cognome | nome | sigla | data | NumFis"
+  const seedRank = {};
+  for (const l of lines) { const m = /^\d+ \| (?:SI|NO) \| (\d+) \| .+ \| [A-Z][A-Z0-9]{2,5} \| \d\d\/\d\d\/\d\d(?:\d\d)? \| (\d{4,7})$/.exec(l.join(' | ')); if (m) seedRank[m[2]] = +m[1]; }
+  return { kind: 'individual', ...base, category, rows, sigla, seedRank };
 }
 
-async function parsePdf(buf) { return parseResults(await pdfPages(buf)); }
+async function parsePdf(buf) {
+  const raw = await pdfRaw(buf), r = parseResults(raw.map(pageLines));
+  if (r.kind === 'individual') { try { r.detail = parseDetail(raw); } catch (e) { r.detailError = e.message; } }
+  return r;
+}
 
 // Gara nel formato dell'app (conclusa, con la sola classifica finale).
-function toCompetition(r, { id, source }) {
+function toCompetition(r, { id, source, group }) {
   const catLabel = r.category;
   const athletes = r.rows.map((x, i) => ({ id: `${id}a${i}`, name: pretty(`${x.surname} ${x.given}`.replace(/\s+/g, ' ').trim()), club: prettyClub(x.club), fis: x.code, rank: null, manual: true }));
+  const poolSigla = {};
+  for (const p of r.detail?.pools || []) for (const x of p.rows) if (x.sigla) poolSigla[x.code] = x.sigla;
+  const det = r.detail ? buildDetail(r.detail, athletes, a => r.sigla?.[a.fis] || poolSigla[a.fis] || '') : {};
+  for (const a of athletes) if (r.seedRank?.[a.fis]) a.rank = r.seedRank[a.fis];
   return {
-    id, ownerId: null, name: /master/i.test(r.event) && /Cat\./.test(catLabel) ? `${r.event} – ${catLabel}` : r.event,
+    id, ownerId: null, name: r.event, group,
     date: r.printed, place: r.place, weapon: r.weapon, category: catLabel, gender: r.gender,
-    zone: /master/i.test(r.event) || /^Master/.test(catLabel) ? 'master' : 'nazionale', referees: [], athletes, pools: null, de: null,
-    imported: { ...source, state: r.state, final: r.rows.map((x, i) => ({ id: athletes[i].id, pos: x.pos })) },
+    zone: /master/i.test(r.event) || /^Master/.test(catLabel) ? 'master' : 'nazionale', referees: [], athletes, pools: det.pools || null, de: det.de || null,
+    imported: { ...source, v: 3, state: r.state, final: r.rows.map((x, i) => ({ id: athletes[i].id, pos: x.pos })) },
   };
 }
 

@@ -16,7 +16,7 @@ const rankKey = (category, weapon, gender) => [slug(category), slug(weapon), slu
 function open(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
-  db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
+  db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-20000; PRAGMA mmap_size=134217728;
   CREATE TABLE IF NOT EXISTS users(
     id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, pw TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('admin','regional','director','referee')), zone TEXT, active INTEGER NOT NULL DEFAULT 1,
@@ -40,16 +40,25 @@ function open(file) {
 
   // Migrazione: codice FIS dell'atleta nei ranking (serve per collegare i risultati delle gare alle società).
   if (!db.prepare('PRAGMA table_info(ranking_entries)').all().some(c => c.name === 'code')) db.exec("ALTER TABLE ranking_entries ADD COLUMN code TEXT NOT NULL DEFAULT ''");
+  for (const [t, col, def] of [['ranking_entries', 'born', "TEXT NOT NULL DEFAULT ''"], ['ranking_entries', 'total', 'REAL'], ['ranking_entries', 'prev', 'INTEGER'], ['ranking_entries', 'diff', 'INTEGER'],
+    ['ranking_entries', 'scores', 'TEXT'], ['ranking_lists', 'columns', 'TEXT'], ['ranking_lists', 'legend', 'TEXT'], ['ranking_lists', 'as_of', "TEXT NOT NULL DEFAULT ''"],
+    ['ranking_lists', 'edition', "TEXT NOT NULL DEFAULT ''"], ['ranking_lists', 'title', "TEXT NOT NULL DEFAULT ''"]])
+    if (!db.prepare(`PRAGMA table_info(${t})`).all().some(c => c.name === col)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${col} ${def}`);
   db.exec('CREATE INDEX IF NOT EXISTS re_code ON ranking_entries(code)');
   if (!db.prepare('PRAGMA table_info(clubs)').all().some(c => c.name === 'source')) db.exec("ALTER TABLE clubs ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'");
-  const q = sql => db.prepare(sql);
-  const tx = fn => (...a) => { db.exec('BEGIN'); try { const r = fn(...a); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
+  // Statement preparati riutilizzati (compilati una sola volta).
+  const stmts = new Map();
+  const q = sql => { let st = stmts.get(sql); if (!st) { st = db.prepare(sql); stmts.set(sql, st); } return st; };
+  // Versione dei dati: cambia a ogni scrittura (serve alle cache delle risposte).
+  let version = 1;
+  const bump = () => { version++; };
+  const tx = fn => (...a) => { db.exec('BEGIN'); try { const r = fn(...a); db.exec('COMMIT'); bump(); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
   const like = t => '%' + t.replace(/[\\%_]/g, m => '\\' + m) + '%';
   const pub = u => u && { id: u.id, name: u.name, email: u.email, role: u.role, zone: u.zone || null, active: !!u.active };
 
   // --- Utenti e sessioni ---
   const S = {
-    db, uid, close: () => db.close(),
+    db, uid, close: () => db.close(), version: () => version,
     createUser({ name, email, password, role, zone }) {
       name = String(name || '').trim(); email = String(email || '').trim().toLowerCase();
       if (!ROLES.includes(role)) throw new Error('Ruolo non valido');
@@ -57,10 +66,10 @@ function open(file) {
       if (String(password || '').length < 8) throw new Error('La password deve avere almeno 8 caratteri');
       if (q('SELECT 1 FROM users WHERE email=?').get(email)) throw Object.assign(new Error('Email già registrata'), { code: 409 });
       const salt = crypto.randomBytes(8).toString('hex'), id = uid();
-      q('INSERT INTO users(id,name,email,salt,pw,role,zone,active,created) VALUES(?,?,?,?,?,?,?,1,?)').run(id, name, email, salt, hash(password, salt), role, zone || null, Date.now());
+      q('INSERT INTO users(id,name,email,salt,pw,role,zone,active,created) VALUES(?,?,?,?,?,?,?,1,?)').run(id, name, email, salt, hash(password, salt), role, zone || null, Date.now()); bump();
       return S.user(id);
     },
-    user: id => pub(q('SELECT * FROM users WHERE id=?').get(id)),
+    user: id => (id ? pub(q('SELECT * FROM users WHERE id=?').get(String(id))) : null),
     users: (role) => q(`SELECT * FROM users ${role ? 'WHERE role=?' : ''} ORDER BY role, name`).all(...(role ? [role] : [])).map(pub),
     verify(email, password) {
       const u = q('SELECT * FROM users WHERE email=?').get(String(email || '').trim().toLowerCase());
@@ -73,14 +82,14 @@ function open(file) {
       if (!ROLES.includes(n.role)) throw new Error('Ruolo non valido');
       q('UPDATE users SET name=?, zone=?, active=?, role=? WHERE id=?').run(String(n.name).trim() || u.name, n.zone, n.active, n.role, id);
       if (!n.active) S.dropSessions(id);
-      return S.user(id);
+      bump(); return S.user(id);
     },
     setPassword(id, password) {
       if (String(password || '').length < 8) throw new Error('La password deve avere almeno 8 caratteri');
       const salt = crypto.randomBytes(8).toString('hex');
       q('UPDATE users SET salt=?, pw=? WHERE id=?').run(salt, hash(password, salt), id); S.dropSessions(id);
     },
-    deleteUser: id => { S.dropSessions(id); q('DELETE FROM users WHERE id=?').run(id); },
+    deleteUser: id => { S.dropSessions(id); q('DELETE FROM users WHERE id=?').run(id); bump(); },
     countRole: role => q('SELECT COUNT(*) n FROM users WHERE role=? AND active=1').get(role).n,
     createSession(userId) {
       const sid = crypto.randomBytes(24).toString('hex');
@@ -98,6 +107,7 @@ function open(file) {
 
   // --- Competizioni: SQLite è la fonte di verità, la cache in memoria serve a leggere velocemente ---
   const cache = new Map();
+  let dataVersion = db.prepare('PRAGMA data_version').get().data_version;
   for (const r of q('SELECT data FROM competitions').all()) { const c = JSON.parse(r.data); cache.set(c.id, c); }
   Object.assign(S, {
     comps: () => [...cache.values()],
@@ -107,31 +117,49 @@ function open(file) {
          ON CONFLICT(id) DO UPDATE SET owner_id=excluded.owner_id, zone=excluded.zone, name=excluded.name, date=excluded.date, weapon=excluded.weapon,
          category=excluded.category, gender=excluded.gender, data=excluded.data`)
         .run(c.id, c.ownerId || null, c.zone || 'nazionale', c.name, c.date || '', c.weapon || '', c.category || '', c.gender || 'M', JSON.stringify(c));
-      cache.set(c.id, c);
+      cache.set(c.id, c); bump();
     },
-    removeComp(id) { q('DELETE FROM competitions WHERE id=?').run(id); cache.delete(id); },
+    removeComp(id) { q('DELETE FROM competitions WHERE id=?').run(id); cache.delete(id); bump(); },
+    // Se un altro processo ha modificato il database (import da riga di comando) si ricarica la cache delle gare.
+    sync() {
+      const dv = db.prepare('PRAGMA data_version').get().data_version;
+      if (dv === dataVersion) return false;
+      dataVersion = dv; cache.clear();
+      for (const r of q('SELECT data FROM competitions').all()) { const c = JSON.parse(r.data); cache.set(c.id, c); }
+      bump(); return true;
+    },
   });
 
   // --- Ranking ---
   Object.assign(S, {
     // Sostituisce per intero una lista di ranking. Restituisce un riepilogo delle differenze.
-    importList: tx(({ category, weapon, gender, entries, file = '', hash: fh = '', season = '' }) => {
+    importList: tx(({ category, weapon, gender, entries, file = '', hash: fh = '', season = '', columns = null, legend = null, asOf = '', edition = '', title = '' }) => {
       const key = rankKey(category, weapon, gender), g = String(gender || 'M').toUpperCase();
       const old = new Map(q('SELECT name_key, pos FROM ranking_entries WHERE list_key=?').all(key).map(r => [r.name_key, r.pos]));
       q('DELETE FROM ranking_lists WHERE key=?').run(key);
-      q('INSERT INTO ranking_lists(key,category,weapon,gender,season,file,file_hash,updated,count) VALUES(?,?,?,?,?,?,?,?,?)')
-        .run(key, slug(category), slug(weapon), g, season, file, fh, Date.now(), entries.length);
-      const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos,code) VALUES(?,?,?,?,?,?,?)');
+      q('INSERT INTO ranking_lists(key,category,weapon,gender,season,file,file_hash,updated,count,columns,legend,as_of,edition,title) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        .run(key, slug(category), slug(weapon), g, season, file, fh, Date.now(), entries.length, columns && JSON.stringify(columns), legend && JSON.stringify(legend), asOf, edition, title);
+      const ins = q('INSERT INTO ranking_entries(list_key,name_key,name,club,club_key,pos,code,born,total,prev,diff,scores) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)');
       let added = 0, changed = 0;
       for (const e of entries) {
-        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos, e.code || '');
+        ins.run(key, e.key, pretty(e.name), e.club || '', R.norm(e.club || ''), e.pos, e.code || '', e.born || '', e.total ?? null, e.prev ?? null, e.diff ?? null, e.scores ? JSON.stringify(e.scores) : null);
         if (!old.has(e.key)) added++; else if (old.get(e.key) !== e.pos) changed++;
       }
       const seen = new Set(entries.map(e => e.key));
       return { key, count: entries.length, added, changed, removed: [...old.keys()].filter(k => !seen.has(k)).length, first: old.size === 0 };
     }),
-    rankingLists: () => q('SELECT key, category, weapon, gender, season, file, updated, count FROM ranking_lists ORDER BY weapon, category, gender').all(),
-    removeRankingFile: file => q('DELETE FROM ranking_lists WHERE file=?').run(file).changes,
+    rankingLists: () => q('SELECT key, category, weapon, gender, season, file, updated, count, as_of, edition, title FROM ranking_lists ORDER BY weapon, category, gender').all(),
+    rankingDetail: key => { const l = q('SELECT * FROM ranking_lists WHERE key=?').get(key); return l && { ...l, columns: l.columns ? JSON.parse(l.columns) : [], legend: l.legend ? JSON.parse(l.legend) : [] }; },
+    rankingRows(key, { q: terms = [], offset = 0, limit = 50 } = {}) {
+      const w = ['list_key=?', ...terms.map(() => `(name_key LIKE ? ESCAPE '\\' OR club_key LIKE ? ESCAPE '\\')`)].join(' AND ');
+      const args = [key, ...terms.flatMap(t => [like(t), like(t)])];
+      const total = q(`SELECT COUNT(*) n FROM ranking_entries WHERE ${w}`).get(...args).n;
+      const rows = q(`SELECT name_key key, name, club, code, pos, born, total, prev, diff, scores FROM ranking_entries WHERE ${w} ORDER BY pos, name LIMIT ? OFFSET ?`).all(...args, limit, offset)
+        .map(r => ({ ...r, scores: r.scores ? JSON.parse(r.scores) : null }));
+      return { total, rows };
+    },
+    rankingPos: (key, nameKey) => q('SELECT pos FROM ranking_entries WHERE list_key=? AND name_key=?').get(key, nameKey)?.pos ?? null,
+    removeRankingFile: file => { const n = q('DELETE FROM ranking_lists WHERE file=?').run(file).changes; bump(); return n; },
     userByEmail: email => pub(q('SELECT * FROM users WHERE email=?').get(String(email).toLowerCase())),
     rankingList: key => q('SELECT key, category, weapon, gender, season, file, file_hash, updated, count FROM ranking_lists WHERE key=?').get(key),
     rankOf: (key, name) => q('SELECT pos FROM ranking_entries WHERE list_key=? AND name_key=?').get(key, R.nameKey(name))?.pos ?? null,

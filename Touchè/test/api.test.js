@@ -77,3 +77,13 @@ test('quota di eliminati dopo i gironi', async () => {
   assert.deepEqual(tail, elim);
   assert.equal(v.final.at(-1).pos, 7);
 });
+
+test('cache HTTP: ETag e 304 sulle risposte pubbliche, versione aggiornata dopo una modifica', async () => {
+  const r1 = await fetch(base + '/api/competitions'); const etag = r1.headers.get('etag'); await r1.arrayBuffer();
+  assert.ok(etag);
+  const r2 = await fetch(base + '/api/competitions', { headers: { 'If-None-Match': etag } });
+  assert.equal(r2.status, 304);
+  S.saveComp({ id: 'cachetest', name: 'Nuova', zone: 'nazionale', athletes: [], referees: [], pools: null, de: null });
+  const r3 = await fetch(base + '/api/competitions', { headers: { 'If-None-Match': etag } });
+  assert.equal(r3.status, 200); assert.ok((await r3.json()).some(c => c.id === 'cachetest'));
+});

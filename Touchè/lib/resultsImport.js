@@ -89,11 +89,23 @@ async function importResults(store, { since = '2025-08-01', cacheDir, localDir, 
     const rank = x => (x.state === 'definitiva' ? 1 : 0) + ':' + x.printed;
     if (!o || rank(r) > rank(o)) best.set(key, r);
   }
+  // Raggruppa i file della stessa gara (stesso titolo, date ravvicinate): categorie, armi e sessi diversi sono varianti di un'unica gara.
+  const byTitle = new Map();
+  for (const r of best.values()) { const k = r.event.toLowerCase().replace(/\s+/g, ' ').trim(); (byTitle.get(k) || byTitle.set(k, []).get(k)).push(r); }
+  for (const list of byTitle.values()) {
+    list.sort((a, b) => a.printed.localeCompare(b.printed));
+    let start = list[0].printed, prev = start, n = 0;
+    for (const r of list) {
+      if ((new Date(r.printed) - new Date(prev)) / 864e5 > 10) { start = r.printed; n++; }
+      prev = r.printed;
+      r.group = { id: 'g' + crypto.createHash('sha1').update(`${r.event.toLowerCase()}|${start}|${n}`).digest('hex').slice(0, 10), title: r.event };
+    }
+  }
   for (const r of best.values()) {
     const id = 'fis' + r.it.id, old = store.comp(id);
-    if (old && old.imported?.hash === r.hash && !force) { report.unchanged++; continue; }
+    if (old && old.imported?.hash === r.hash && old.imported?.v === 3 && old.group?.id === r.group.id && !force) { report.unchanged++; continue; }
     if (dryRun) { report.imported++; continue; }
-    const c = toCompetition(r, { id, source: { source: 'federscherma.it', url: r.it.url, doc: r.it.id, hash: r.hash } });
+    const c = toCompetition(r, { id, group: r.group, source: { source: 'federscherma.it', url: r.it.url, doc: r.it.id, hash: r.hash } });
     if (old) { c.ownerId = old.ownerId; if (old.zone !== c.zone && old.zoneFixed) c.zone = old.zone; report.updated++; } else report.imported++;
     store.saveComp(c);
   }

@@ -20,7 +20,8 @@ test('master: categoria dalla riga sotto la testata', () => {
   const p = [['FEDERAZIONE ITALIANA SCHERMA'], ['1^ Prova Circuito Nazionale Master 2025-26'], ['x'], ['Classifica definitiva', 'Fioretto femminile', 'Zevio (VR) - 2^ Prova'], ['2', 'Cat.4 (70+)', 'Stampa:', '29/11/2025', '16:56'], ['1', '111111 ROSSI', 'ANNA', '01/01/50', 'CLUB']];
   const r = parseResults([p]);
   assert.deepEqual([r.category, r.place, r.province, r.gender], ['Master Cat. 4', 'Zevio', 'VR', 'F']);
-  assert.equal(toCompetition(r, { id: 'x', source: {} }).zone, 'master');
+  const c = toCompetition(r, { id: 'x', source: {}, group: { id: 'g1', title: r.event } });
+  assert.equal(c.zone, 'master'); assert.equal(c.name, '1^ Prova Circuito Nazionale Master 2025-26'); assert.equal(c.group.id, 'g1');
 });
 test('gare a squadre e società', () => {
   const t = [['Stampa:', '10/01/2026', '19:39'], ['Classifica definitiva', 'Spada maschile a squadre', 'Bolzano (BZ) - Serie C2'], ['1', '8', '1', '20275 PNSQU', 'SAN QUIRINO SCHERMA', 'San Quirino'], ['LOVISA EDOARDO', 'PAVAN LEONARDO'], ['2', '1', '2', '1109', 'RMCSA', 'SS LAZIO SCHERMA ARICCIA', 'Frascati']];

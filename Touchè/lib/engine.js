@@ -70,7 +70,7 @@ function poolStats(pools, athletes) {
     if (b.sa == null || b.sb == null) continue;
     const A = st[b.a], B = st[b.b];
     A.m++; B.m++; A.ts += b.sa; A.tr += b.sb; B.ts += b.sb; B.tr += b.sa;
-    if (b.sa > b.sb) A.v++; else B.v++;
+    if (b.sa > b.sb || (b.sa === b.sb && b.w === 'a')) A.v++; else B.v++; // parità a tempo scaduto: vince chi ha la priorità (w)
   }
   return st;
 }

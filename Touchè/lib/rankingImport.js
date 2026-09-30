@@ -50,10 +50,11 @@ function importDir(store, dir, { dryRun = false, force = false, season = '', log
       if (m.category === '__combinata') { report.push({ file, sheet: label, status: 'ignorato', reason: 'lista combinata, già coperta dalle liste singole' }); continue; }
       const missing = ['weapon', 'category', 'gender'].filter(k => !m[k]);
       if (missing.length) { report.push({ file, sheet: label, status: 'saltato', reason: `non riesco a dedurre: ${missing.join(', ')} (usa rankings/manifest.json)` }); continue; }
-      const key = Store.rankKey(m.category, m.weapon, m.gender), h = fileHash + '#' + (l.source ? l.source + '#' : '') + l.name;
+      const key = Store.rankKey(m.category, m.weapon, m.gender), h = fileHash + '#' + (l.source ? l.source + '#' : '') + l.name + '#v2';
       if (!force && store.rankingList(key)?.file_hash === h) { report.push({ file, sheet: label, status: 'invariato', sheet: label, key, count: l.entries.length }); continue; }
       if (dryRun) { report.push({ file, sheet: label, status: 'da importare', sheet: label, key, count: l.entries.length }); continue; }
-      const r = store.importList({ ...m, entries: l.entries, file, hash: h, season: m.season || season });
+      const t = l.table || {};
+      const r = store.importList({ ...m, entries: l.entries, file: (l.source || file).replace(/^Copia di /i, ''), hash: h, season: m.season || season || t.season || '', columns: t.columns, legend: t.legend, asOf: t.asOf, edition: t.edition, title: t.title });
       report.push({ file, sheet: label, status: 'importato', sheet: label, ...r });
     }
   }

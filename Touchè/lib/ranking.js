@@ -138,7 +138,16 @@ const titleOf = rows => {
 };
 // Elenchi di ranking: uno per foglio che contiene una tabella riconoscibile.
 function parseRankingLists(buf, filename = '') {
-  return loadSheets(buf, filename).map(sh => ({ source: sh.source, name: sh.name, entries: extractEntries(sh.rows), title: titleOf(sh.rows) })).filter(l => l.entries.length);
+  const { extractTable } = require('./rankingTable');
+  return loadSheets(buf, filename).map(sh => {
+    const entries = extractEntries(sh.rows), title = titleOf(sh.rows);
+    let table = null; try { table = extractTable(sh.rows, { title, fileNames: [sh.source, filename].filter(Boolean) }); } catch {}
+    if (table) { // punteggi per gara, totale e posizione precedente di ogni atleta
+      const byKey = new Map(table.rows.map(r => [r.key + '|' + r.pos, r]));
+      for (const e of entries) { const t = byKey.get(e.key + '|' + e.pos); if (t) Object.assign(e, { born: t.born, total: t.total, prev: t.prev, diff: t.diff, scores: t.scores }); }
+    }
+    return { source: sh.source, name: sh.name, entries, title, table: table && { columns: table.columns, legend: table.legend, asOf: table.asOf, edition: table.edition, season: table.season, title: table.title } };
+  }).filter(l => l.entries.length);
 }
 
 const rankOf = (map, name) => map?.[nameKey(name)] ?? null;
