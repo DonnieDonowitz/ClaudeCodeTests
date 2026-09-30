@@ -271,10 +271,70 @@ route('GET', '/api/live', () => {
   }
   return out.sort((x, y) => y.t - x.t).slice(0, 15);
 });
+
+// ---- Ricerca pubblica: gare, schermidori e società ----
+// Un atleta è identificato dal nome (indipendente dall'ordine di cognome e nome), una società dal nome normalizzato.
+const inProgress = c => { const s = status(c); return s === 'gironi' || s === 'tabellone'; };
+const compBrief = (c, a) => ({ id: c.id, name: c.name, date: c.date, place: c.place, weapon: c.weapon, category: c.category, gender: c.gender || 'M',
+  zone: c.zone || 'nazionale', status: status(c), live: inProgress(c), progress: progress(c), athlete: a ? { rank: a.rank } : undefined });
+function people() {
+  const ppl = new Map(), clubs = new Map();
+  for (const c of [...db.competitions].sort((x, y) => (x.date || '').localeCompare(y.date || ''))) {
+    for (const a of c.athletes) {
+      if (a.absent || !a.name) continue;
+      const k = R.nameKey(a.name); if (!k) continue;
+      const p = ppl.get(k) || { key: k, name: a.name, club: '', comps: [] };
+      p.name = a.name; if (a.club) p.club = a.club; p.comps.push([c, a]); ppl.set(k, p);
+      if (a.club) {
+        const ck = R.norm(a.club), cl = clubs.get(ck) || { key: ck, name: a.club, athletes: new Set() };
+        cl.athletes.add(k); clubs.set(ck, cl);
+      }
+    }
+  }
+  return { ppl, clubs };
+}
+const byDate = (x, y) => (y.live - x.live) || (y.date || '').localeCompare(x.date || '');
+function athleteRankings(k) {
+  const out = [];
+  for (const [key, ri] of Object.entries(db.rankings)) {
+    const pos = ri.map?.[k]; if (!pos) continue;
+    const [category, weapon, gender] = key.split('|');
+    out.push({ category, weapon, gender: gender.toUpperCase(), pos, file: ri.file, updated: ri.updated });
+  }
+  return out.sort((x, y) => x.weapon.localeCompare(y.weapon) || x.category.localeCompare(y.category) || x.pos - y.pos);
+}
+route('GET', '/api/search', (req, b, res, [], url) => {
+  const q = R.norm(url.searchParams.get('q') || ''); if (q.length < 2) return { competitions: [], athletes: [], clubs: [] };
+  const terms = q.split(' '), hit = s => { const n = R.norm(s); return terms.every(t => n.includes(t)); };
+  const { ppl, clubs } = people();
+  return {
+    competitions: db.competitions.filter(c => hit(`${c.name} ${c.place} ${c.weapon} ${c.category}`)).map(c => compBrief(c)).sort(byDate).slice(0, 30),
+    athletes: [...ppl.values()].filter(p => hit(p.name)).map(p => ({ key: p.key, name: p.name, club: p.club, count: p.comps.length, live: p.comps.some(([c]) => inProgress(c)) })).sort((x, y) => y.live - x.live || x.name.localeCompare(y.name)).slice(0, 30),
+    clubs: [...clubs.values()].filter(cl => hit(cl.name)).map(cl => ({ key: cl.key, name: cl.name, count: cl.athletes.size })).sort((x, y) => x.name.localeCompare(y.name)).slice(0, 30),
+  };
+});
+route('GET', '/api/athletes/([^/]+)', (req, b, res, [key]) => {
+  key = decodeURIComponent(key);
+  const p = people().ppl.get(key) || bad('Schermidore non trovato', 404);
+  return { key, name: p.name, club: p.club, rankings: athleteRankings(key), competitions: p.comps.map(([c, a]) => compBrief(c, a)).sort(byDate) };
+});
+route('GET', '/api/clubs/([^/]+)', (req, b, res, [key]) => {
+  key = decodeURIComponent(key);
+  const { ppl, clubs } = people(), cl = clubs.get(key) || bad('Società non trovata', 404);
+  return { key, name: cl.name, athletes: [...cl.athletes].map(k => { const p = ppl.get(k);
+    return { key: k, name: p.name, count: p.comps.length, live: p.comps.some(([c]) => inProgress(c)), rankings: athleteRankings(k).map(r => ({ category: r.category, weapon: r.weapon, gender: r.gender, pos: r.pos })) }; })
+    .sort((x, y) => x.name.localeCompare(y.name)) };
+});
+// Loghi opzionali in public/logos/<zona>.(svg|png|jpg|webp), zona = nazionale, master o id regione.
+route('GET', '/api/logos', () => {
+  const out = {};
+  try { for (const f of fs.readdirSync(path.join(PUBLIC, 'logos'))) { const m = /^([a-z-]+)\.(svg|png|jpe?g|webp)$/.exec(f); if (m && ZONES.includes(m[1])) out[m[1]] = 'logos/' + f; } } catch {}
+  return out;
+});
 route('GET', '/api/categories', () => CATEGORIES);
 route('GET', '/api/zones', () => ZONES);
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 function serveStatic(req, res) {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (p === '/') p = '/index.html';
@@ -295,7 +355,7 @@ http.createServer((req, res) => {
         const match = re.exec(url.pathname);
         if (m === req.method && match) {
           const body = raw ? JSON.parse(raw) : {};
-          const out = fn(req, body, res, match.slice(1));
+          const out = fn(req, body, res, match.slice(1), url);
           res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
           return res.end(JSON.stringify(out));
         }

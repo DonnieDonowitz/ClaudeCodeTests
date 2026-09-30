@@ -99,4 +99,4 @@ function parseRankingFile(buf, filename = '') {
 
 const rankOf = (map, name) => map?.[nameKey(name)] ?? null;
 
-module.exports = { UNRANKED, xlsxSheets, csvRows, extractRanking, parseRankingFile, nameKey, rankOf };
+module.exports = { UNRANKED, norm, xlsxSheets, csvRows, extractRanking, parseRankingFile, nameKey, rankOf };

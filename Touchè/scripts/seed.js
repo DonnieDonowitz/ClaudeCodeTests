@@ -2,6 +2,7 @@
 // Dati dimostrativi (nomi e società INVENTATI). Uso: npm run seed  — sovrascrive data/db.json
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const E = require('../lib/engine');
+const R = require('../lib/ranking');
 
 let s = 42; const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
 const uid = () => crypto.randomBytes(6).toString('hex');
@@ -50,5 +51,10 @@ const reg = base('Regionale Piemonte Giovanissimi', '2026-10-04', 'Sala d\'Armi 
 
 const file = path.join(__dirname, '..', 'data', 'db.json');
 fs.mkdirSync(path.dirname(file), { recursive: true });
-fs.writeFileSync(file, JSON.stringify({ users: [user], sessions: {}, competitions: [done, live, open, master, reg] }));
+const competitions = [done, live, open, master, reg];
+// Ranking dimostrativi per categoria/arma/sesso, come se caricati dai file Federscherma.
+const rankings = {};
+for (const c of competitions) rankings[[c.category, c.weapon, c.gender].map(x => x.toLowerCase()).join('|')] = { updated: Date.now(), file: 'ranking-demo.xlsx',
+  map: Object.fromEntries(c.athletes.filter(a => a.rank).map(a => [R.nameKey(a.name), a.rank])), count: c.athletes.filter(a => a.rank).length };
+fs.writeFileSync(file, JSON.stringify({ users: [user], sessions: {}, competitions, rankings }));
 console.log('Dati demo scritti. Accesso direttore: demo@touche.it / demo1234');

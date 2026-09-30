@@ -5,7 +5,14 @@ const STATUS = { iscrizioni: 'Iscrizioni', gironi: 'Gironi', tabellone: 'Tabello
 const REGIONS = { 'abruzzo': 'Abruzzo', 'basilicata': 'Basilicata', 'calabria': 'Calabria', 'campania': 'Campania', 'emilia-romagna': 'Emilia-Romagna', 'friuli-venezia-giulia': 'Friuli-Venezia Giulia', 'lazio': 'Lazio', 'liguria': 'Liguria', 'lombardia': 'Lombardia', 'marche': 'Marche', 'molise': 'Molise', 'piemonte': 'Piemonte', 'puglia': 'Puglia', 'sardegna': 'Sardegna', 'sicilia': 'Sicilia', 'toscana': 'Toscana', 'trentino-alto-adige': 'Trentino-Alto Adige', 'umbria': 'Umbria', 'valle-d-aosta': 'Valle d\'Aosta', 'veneto': 'Veneto' };
 const CATEGORIES = ['Giovani', 'Assoluti', 'Under-23', 'Cadetti', 'Juniores', 'Under-14', 'Master'];
 const ZONE = { nazionale: 'Nazionali', master: 'Master', ...REGIONS };
-let me = null, timer = null, tab = 'atleti';
+const ABBR = { nazionale: 'FIS', master: 'AMIS', 'emilia-romagna': 'EMR', 'friuli-venezia-giulia': 'FVG', 'trentino-alto-adige': 'TAA', 'valle-d-aosta': 'VDA' };
+let me = null, timer = null, tab = 'atleti', HL = '', LOGOS = {};
+const wkey0 = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const wkey = s => wkey0(s).split(' ').filter(Boolean).sort().join(' ');
+// Evidenzia il nome dello schermidore cercato (confronto indipendente dall'ordine cognome/nome).
+const hl = name => HL && wkey(name) === HL ? `<mark class="hl">${esc(name)}</mark>` : esc(name);
+// Logo della zona (file in public/logos/) oppure sigla al suo posto.
+const logo = (z, sm) => LOGOS[z] ? `<img class="zl ${sm ? 'sm' : ''}" src="${LOGOS[z]}" alt="">` : `<span class="zl mono ${sm ? 'sm' : ''}">${esc(ABBR[z] || z.slice(0, 3).toUpperCase())}</span>`;
 
 async function api(method, url, body) {
   const r = await fetch('/api' + url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -17,7 +24,7 @@ const act = fn => async (...a) => { try { await fn(...a); } catch (e) { alert(e.
 const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'ora' : s < 3600 ? Math.round(s / 60) + ' min fa' : s < 86400 ? Math.round(s / 3600) + ' h fa' : new Date(t).toLocaleDateString('it-IT'); };
 
 function nav() {
-  $('#nav').innerHTML = !me ? `<a href="#/arbitro">Arbitri</a><a href="#/login">Direttori</a>`
+  $('#nav').innerHTML = !me ? `<a href="#/login">Accedi</a>`
     : me.role === 'referee' ? `<span class="mute">Arbitro · ${esc(me.name)}</span><a href="#/c/${me.competitionId}">La mia gara</a><a href="#" id="out">Esci</a>`
     : `<span class="mute">${esc(me.name)}</span><a href="#/new">Nuova gara</a><a href="#" id="out">Esci</a>`;
   const o = $('#out'); if (o) o.onclick = async e => { e.preventDefault(); await api('POST', '/logout'); me = null; nav(); location.hash = '#/'; };
@@ -28,7 +35,7 @@ async function home(zone) {
   const [list, live] = await Promise.all([api('GET', '/competitions'), api('GET', '/live')]);
   const count = {}, active = {};
   list.forEach(c => { count[c.zone] = (count[c.zone] || 0) + 1; if (c.status === 'gironi' || c.status === 'tabellone') active[c.zone] = true; });
-  const tile = (z, big) => `<a class="zone ${big ? 'big' : ''} ${zone === z ? 'on' : ''} ${count[z] ? '' : 'zero'}" href="#/${zone === z ? '' : 'z/' + z}"><b>${active[z] ? '<i class="dot"></i>' : ''}${esc(ZONE[z])}</b><span>${count[z] || 0} ${count[z] === 1 ? "gara" : "gare"}</span></a>`;
+  const tile = (z, big) => `<a class="zone ${big ? 'big' : ''} ${zone === z ? 'on' : ''} ${count[z] ? '' : 'zero'}" href="#/${zone === z ? '' : 'z/' + z}">${logo(z)}<b>${active[z] ? '<i class="dot"></i>' : ''}${esc(ZONE[z])}</b><span>${count[z] || 0} ${count[z] === 1 ? "gara" : "gare"}</span></a>`;
   const shown = list.filter(c => !zone || c.zone === zone), feed = live.filter(f => !zone || f.zone === zone);
   $('#app').innerHTML = `<h1>Competizioni</h1><p class="mute">Tutta la scherma italiana, in tempo reale.</p>
     <h2>Circuiti</h2><div class="zones top">${tile('nazionale', 1)}${tile('master', 1)}</div>
@@ -39,25 +46,29 @@ async function home(zone) {
         <small>${esc(f.phase)} · ${esc(f.c)}${f.ref ? ' · Arb. ' + esc(f.ref) : ''}</small></div><span class="mute">${ago(f.t)}</span></div>`; }).join('')}</div>` : ''}
     <h2>${zone ? esc(ZONE[zone]) : 'Tutte le gare'}</h2><div class="list">${shown.map(c => {
       const pr = c.progress, live = c.status === 'gironi' || c.status === 'tabellone';
-      return `<a class="item" href="#/c/${c.id}"><div><b>${esc(c.name)}</b><div class="mute">${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} · ${esc(c.place)} · ${esc(c.date)}</div></div>
+      return `<a class="item" href="#/c/${c.id}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} · ${esc(c.place)} · ${esc(c.date)}</div></div>
       <div><span class="badge ${c.status}">${live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span>${live && pr.total ? `<div class="bar"><i style="width:${Math.round(100 * pr.done / pr.total)}%"></i></div>` : `<span class="mute">${c.athletes} atleti</span>`}</div></a>`; }).join('') || '<p class="mute" style="padding:16px;margin:0">Nessuna gara in questa zona.</p>'}</div>`;
 }
 
-/* ---------- Accesso ---------- */
+/* ---------- Accesso unificato ---------- */
+let loginRole = 'director';
 function authView(mode) {
-  const reg = mode === 'register';
-  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h1>${reg ? 'Registrati' : 'Direttori di gara'}</h1>
-  <form id="f" style="display:grid;gap:10px">${reg ? '<input name="name" placeholder="Nome e cognome" required>' : ''}
-  <input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Password" required>
-  ${reg ? '<input name="invite" placeholder="Codice invito" required>' : ''}
+  const reg = mode === 'register', ref = !reg && loginRole === 'referee';
+  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h1>${reg ? 'Registrati' : 'Accedi'}</h1>
+  ${reg ? '<p class="mute">Nuovo account per direttori di gara.</p>' : `<div class="tabs seg"><a href="#" data-role="director" class="${ref ? '' : 'on'}">Direttore di gara</a><a href="#" data-role="referee" class="${ref ? 'on' : ''}">Arbitro</a></div>`}
+  <form id="f" style="display:grid;gap:10px">${ref ? `<p class="mute" style="margin:0">Inserisci il codice a 6 cifre che ti ha dato il direttore di gara.</p>
+  <input name="code" inputmode="numeric" maxlength="6" placeholder="000000" style="font-size:28px;text-align:center;letter-spacing:.3em" required>`
+  : `${reg ? '<input name="name" placeholder="Nome e cognome" required>' : ''}<input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Password" required>
+  ${reg ? '<input name="invite" placeholder="Codice invito" required>' : ''}`}
   <button class="primary">${reg ? 'Crea account' : 'Entra'}</button></form>
-  <p class="mute"><a href="#/${reg ? 'login' : 'register'}">${reg ? 'Hai già un account? Accedi' : 'Nuovo direttore? Registrati'}</a> · <a href="#/arbitro">Sono un arbitro</a></p></div>`;
-  $('#f').onsubmit = act(async e => { e.preventDefault(); me = await api('POST', reg ? '/register' : '/login', Object.fromEntries(new FormData(e.target))); me.role = 'director'; nav(); location.hash = '#/'; });
-}
-function refereeLogin() {
-  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h1>Area arbitri</h1><p class="mute">Inserisci il codice a 6 cifre che ti ha dato il direttore di gara.</p>
-  <form id="f" style="display:grid;gap:10px"><input name="code" inputmode="numeric" maxlength="6" placeholder="000000" style="font-size:28px;text-align:center;letter-spacing:.3em" required><button class="primary">Accedi</button></form></div>`;
-  $('#f').onsubmit = act(async e => { e.preventDefault(); me = await api('POST', '/referee/login', Object.fromEntries(new FormData(e.target))); nav(); location.hash = '#/c/' + me.competitionId; });
+  ${ref ? '' : `<p class="mute"><a href="#/${reg ? 'login' : 'register'}">${reg ? 'Hai già un account? Accedi' : 'Nuovo direttore? Registrati'}</a></p>`}</div>`;
+  document.querySelectorAll('[data-role]').forEach(a => a.onclick = e => { e.preventDefault(); loginRole = a.dataset.role; authView('login'); });
+  $('#f').onsubmit = act(async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    if (ref) { me = await api('POST', '/referee/login', d); nav(); location.hash = '#/c/' + me.competitionId; return; }
+    me = await api('POST', reg ? '/register' : '/login', d); me.role = 'director'; nav(); location.hash = '#/';
+  });
 }
 function newView() {
   if (!me || me.role !== 'director') return location.hash = '#/login';
@@ -75,21 +86,21 @@ function newView() {
 async function compView(id, t, poll) {
   const c = await api('GET', '/competitions/' + id);
   if (poll && (document.activeElement?.matches('textarea,select,input:not([data-live])') || document.querySelector('dialog[open]'))) return;
-  tab = t || tab;
+  tab = t && t !== '_' ? t : tab;
   const avail = ['atleti', ...(c.pools ? ['gironi', 'classifica'] : []), ...(c.de ? ['tabellone'] : []), ...(c.final?.length ? ['finale'] : []), ...(c.canEdit ? ['arbitri'] : [])];
   if (!avail.includes(tab)) tab = avail.filter(x => x !== 'arbitri').at(-1);
   const name = Object.fromEntries(c.athletes.map(a => [a.id, a]));
-  const n = id => name[id] ? esc(name[id].name) : '<span class="mute">—</span>';
+  const n = id => name[id] ? hl(name[id].name) : '<span class="mute">—</span>';
   const ae = document.activeElement, keep = ae?.dataset?.live !== undefined && $('#app').contains(ae)
     ? { sel: `[data-de="${ae.dataset.de}"][data-s="${ae.dataset.s}"]`, v: ae.value } : null;
   const body = { atleti: () => athletesTab(c), gironi: () => poolsTab(c, n), classifica: () => rankTab(c, n), tabellone: () => bracketTab(c, n), finale: () => finalTab(c, n), arbitri: () => refereesTab(c) }[tab]();
   const mineP = c.referee ? (c.pools || []).filter(p => p.refereeId === c.referee.id).length : 0;
   const mineM = c.referee ? (c.de?.rounds || []).flat().filter(m => m.refereeId === c.referee.id && !m.winner).length : 0;
   $('#app').innerHTML = `<div class="row2" style="justify-content:space-between"><div><h1>${esc(c.name)}</h1>
-    <div class="mute">${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender || 'M')} · ${esc(c.place)} · ${esc(c.date)} · direttore: ${esc(c.owner)}</div></div>
+    <div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender || 'M')} · ${esc(c.place)} · ${esc(c.date)} · direttore: ${esc(c.owner)}</div></div>
     <span class="badge ${c.status}">${STATUS[c.status]}</span></div>
     ${c.referee ? `<div class="banner">Ciao <b>${esc(c.referee.name)}</b>: ${mineP} gironi e ${mineM} assalti del tabellone ti aspettano. Tocca una cella della griglia (o un punteggio nel tabellone) per inserire il risultato.</div>` : ''}
-    <div class="tabs">${avail.map(x => `<a href="#/c/${id}/${x}" class="${x === tab ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</a>`).join('')}</div>${body}`;
+    <div class="tabs">${avail.map(x => `<a href="#/c/${id}/${x}${HL ? '/' + encodeURIComponent(HL) : ''}" class="${x === tab ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</a>`).join('')}</div>${body}`;
   bind(c);
   if (keep) { const el = document.querySelector('input[data-live]' + keep.sel); if (el) { el.value = keep.v; el.focus(); } }
 }
@@ -97,7 +108,7 @@ async function compView(id, t, poll) {
 function athletesTab(c) {
   const e = c.canEdit && !c.pools, ri = c.rankingInfo;
   return `<div class="card"><table><tr><th>#</th><th>Ranking</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
-    c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l">${esc(a.name)}</td><td class="l">${esc(a.club)}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
+    c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(wkey0(a.club))}">${esc(a.club)}</a>` : ''}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
     `</table>${c.athletes.length ? '' : '<p class="mute">Nessun iscritto.</p>'}<p class="hint">Gli atleti sono ordinati per ranking; senza ranking valgono 9999 e vengono sorteggiati.</p></div>` +
     (e ? `<div class="card"><label>Ranking Federscherma · ${esc(c.category)} · ${esc(c.weapon)} · ${c.gender === 'F' ? 'femminile' : 'maschile'}</label>
       <p class="mute">${ri ? `Caricato: ${ri.count} atleti da <b>${esc(ri.file)}</b> (${new Date(ri.updated).toLocaleDateString('it-IT')}). Carica di nuovo il file quando il ranking viene aggiornato.` : 'Nessun ranking caricato. Scarica il file Excel dal sito della Federscherma e caricalo qui.'}</p>
@@ -265,17 +276,82 @@ function bind(c) {
   }));
 }
 
+
+/* ---------- Ricerca, schermidori, società ---------- */
+const WEAPON = w => w[0].toUpperCase() + w.slice(1);
+const compRow = c => `<a class="item" href="#/c/${c.id}/_${HLNEXT ? '/' + encodeURIComponent(HLNEXT) : ''}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender)} · ${esc(c.place)} · ${esc(c.date)}</div></div>
+  <div><span class="badge ${c.status}">${c.live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span></div></a>`;
+let HLNEXT = '';
+const athRow = a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${esc(a.club || 'Società non indicata')} · ${a.count} ${a.count === 1 ? 'gara' : 'gare'}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`;
+const clubRow = c => `<a class="item" href="#/s/${encodeURIComponent(c.key)}"><div><b>${esc(c.name)}</b><div class="mute">${c.count} ${c.count === 1 ? 'schermidore' : 'schermidori'}</div></div><div></div></a>`;
+
+async function searchView(q) {
+  q = decodeURIComponent(q || '');
+  $('#q').value = q; HLNEXT = '';
+  const r = await api('GET', '/search?q=' + encodeURIComponent(q));
+  const sec = (t, arr, fn) => arr.length ? `<h2>${t}</h2><div class="list">${arr.map(fn).join('')}</div>` : '';
+  const none = !r.competitions.length && !r.athletes.length && !r.clubs.length;
+  $('#app').innerHTML = `<h1>Risultati per “${esc(q)}”</h1>` + (q.trim().length < 2 ? '<p class="mute">Scrivi almeno due lettere.</p>' : none ? '<p class="mute">Nessun risultato: prova con un altro nome di gara, schermidore o società.</p>' : '') +
+    sec('Competizioni', r.competitions, compRow) + sec('Schermidori', r.athletes, athRow) + sec('Società', r.clubs, clubRow);
+}
+async function athleteView(key) {
+  key = decodeURIComponent(key); HLNEXT = key;
+  const a = await api('GET', '/athletes/' + encodeURIComponent(key));
+  const live = a.competitions.filter(c => c.live), past = a.competitions.filter(c => !c.live);
+  const rk = a.rankings.length ? `<div class="card"><table><tr><th class="l">Arma</th><th class="l">Categoria</th><th>Sesso</th><th>Ranking</th></tr>${a.rankings.map(r =>
+    `<tr><td class="l">${esc(WEAPON(r.weapon))}</td><td class="l">${esc(CATEGORIES.find(x => x.toLowerCase() === r.category) || r.category)}</td><td>${r.gender === 'F' ? 'F' : 'M'}</td><td><b>${r.pos}°</b></td></tr>`).join('')}</table>
+    <p class="hint">Dai ranking Federscherma caricati (${[...new Set(a.rankings.map(r => r.file).filter(Boolean))].map(esc).join(', ') || 'file manuale'}).</p></div>`
+    : '<p class="mute">Nessun ranking disponibile per questo schermidore nei file caricati.</p>';
+  $('#app').innerHTML = `<h1>${esc(a.name)}</h1><div class="mute">${a.club ? `Società: <a href="#/s/${encodeURIComponent(wkey0(a.club))}">${esc(a.club)}</a>` : 'Società non indicata'}</div>
+    <h2>Ranking</h2>${rk}
+    ${live.length ? `<h2><i class="dot"></i>In corso</h2><div class="list">${live.map(compRow).join('')}</div>` : ''}
+    <h2>${live.length ? 'Gare precedenti e in programma' : 'Competizioni'}</h2><div class="list">${past.map(compRow).join('') || '<p class="mute" style="padding:16px;margin:0">Nessun’altra gara.</p>'}</div>`;
+}
+async function clubView(key) {
+  key = decodeURIComponent(key); HLNEXT = '';
+  const c = await api('GET', '/clubs/' + encodeURIComponent(key));
+  $('#app').innerHTML = `<h1>${esc(c.name)}</h1><p class="mute">${c.athletes.length} ${c.athletes.length === 1 ? 'schermidore' : 'schermidori'}</p>
+    <div class="list">${c.athletes.map(a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${a.rankings.map(r => `${esc(WEAPON(r.weapon))} ${esc(CATEGORIES.find(x => x.toLowerCase() === r.category) || r.category)} ${r.gender}: ${r.pos}°`).join(' · ') || `${a.count} ${a.count === 1 ? 'gara' : 'gare'}`}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`).join('')}</div>`;
+}
+
+/* Barra di ricerca nell'intestazione: suggerimenti al volo, Invio apre tutti i risultati. */
+function initSearch() {
+  const q = $('#q'), box = $('#sugg'); let t = 0;
+  const close = () => box.classList.remove('open');
+  q.oninput = () => {
+    clearTimeout(t);
+    if (q.value.trim().length < 2) return close();
+    t = setTimeout(async () => {
+      const r = await api('GET', '/search?q=' + encodeURIComponent(q.value)).catch(() => null); if (!r) return;
+      const grp = (title, arr, href, label, sub) => arr.length ? `<div class="sg">${title}</div>` + arr.slice(0, 4).map(x => `<a href="${href(x)}"><b>${esc(label(x))}</b><small>${esc(sub(x))}</small></a>`).join('') : '';
+      const html = grp('Competizioni', r.competitions, x => `#/c/${x.id}/_`, x => x.name, x => `${x.weapon} · ${x.category} · ${x.date}`) +
+        grp('Schermidori', r.athletes, x => `#/a/${encodeURIComponent(x.key)}`, x => x.name, x => x.club) + grp('Società', r.clubs, x => `#/s/${encodeURIComponent(x.key)}`, x => x.name, x => `${x.count} schermidori`);
+      box.innerHTML = html + (html ? `<a class="all" href="#/cerca/${encodeURIComponent(q.value)}">Tutti i risultati</a>` : '<div class="sg">Nessun risultato</div>');
+      box.classList.add('open');
+    }, 180);
+  };
+  q.onkeydown = e => { if (e.key === 'Enter' && q.value.trim()) { close(); location.hash = '#/cerca/' + encodeURIComponent(q.value.trim()); } else if (e.key === 'Escape') close(); };
+  box.onclick = () => close();
+  document.addEventListener('click', e => { if (!e.target.closest('.search')) close(); });
+}
+
 async function render(poll) {
   clearTimeout(timer);
-  const [, sect, id, t] = location.hash.split('/');
+  const [, sect, id, t, h] = location.hash.split('/');
+  HL = sect === 'c' && h ? decodeURIComponent(h) : '';
+  if (sect !== 'cerca') $('#q').value = '';
   try {
     if (sect === 'login') authView('login');
     else if (sect === 'register') authView('register');
-    else if (sect === 'arbitro') refereeLogin();
+    else if (sect === 'arbitro') { loginRole = 'referee'; authView('login'); }
+    else if (sect === 'cerca') await searchView(id);
+    else if (sect === 'a') await athleteView(id);
+    else if (sect === 's') await clubView(id);
     else if (sect === 'new') newView();
-    else if (sect === 'c') { await compView(id, t, poll === true); timer = setTimeout(() => render(true), 4000); return; }
+    else if (sect === 'c') { await compView(id, t, poll === true); if (HL && poll !== true) document.querySelector('.hl')?.scrollIntoView({ block: 'center' }); timer = setTimeout(() => render(true), 4000); return; }
     else { await home(sect === 'z' ? id : null); timer = setTimeout(() => render(true), 4000); }
   } catch (e) { $('#app').innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
 }
 addEventListener('hashchange', () => render());
-api('GET', '/me').then(u => { me = u; nav(); render(); });
+initSearch();
+Promise.all([api('GET', '/me'), api('GET', '/logos').catch(() => ({}))]).then(([u, l]) => { me = u; LOGOS = l; nav(); render(); });

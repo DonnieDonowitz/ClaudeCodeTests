@@ -1,0 +1,10 @@
+Loghi delle zone (opzionali). Copia qui i file ufficiali con questi nomi (svg, png, jpg o webp):
+
+  nazionale.*   logo FIS (Federazione Italiana Scherma)   -> sezione Nazionali
+  master.*      logo AMIS Scherma                          -> sezione Master
+  <regione>.*   logo del Comitato Regionale, con l'id della regione:
+  abruzzo, basilicata, calabria, campania, emilia-romagna, friuli-venezia-giulia, lazio, liguria,
+  lombardia, marche, molise, piemonte, puglia, sardegna, sicilia, toscana, trentino-alto-adige,
+  umbria, valle-d-aosta, veneto
+
+Esempio: public/logos/marche.png. Senza file viene mostrata la sigla.
