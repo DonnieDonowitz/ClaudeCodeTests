@@ -17,10 +17,17 @@ const athletes = n => {
   return list.sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
 };
 
-const salt = 'demo', user = { id: uid(), name: 'Direttore Demo', email: 'demo@touche.it', salt, pw: crypto.scryptSync('demo1234', salt, 32).toString('hex') };
-const REFS = ['Bruno Ferri', 'Laura Serra', 'Enrico Vitale', 'Anna Pellegrini'];
+const dbFile = process.env.TOUCHE_DB || path.join(__dirname, '..', 'data', 'touche.db');
+for (const f of [dbFile, dbFile + '-wal', dbFile + '-shm']) fs.rmSync(f, { force: true });
+const store = require('../lib/store').open(dbFile);
+const mk = (name, email, role, zone) => store.createUser({ name, email, password: 'demo1234', role, zone });
+mk('Amministratore Demo', 'admin@touche.it', 'admin');
+mk('Admin Marche Demo', 'marche@touche.it', 'regional', 'marche');
+mk('Admin Piemonte Demo', 'piemonte@touche.it', 'regional', 'piemonte');
+const user = mk('Direttore Demo', 'demo@touche.it', 'director');
+const REFS = [['Bruno Ferri', 'bruno'], ['Laura Serra', 'laura'], ['Enrico Vitale', 'enrico'], ['Anna Pellegrini', 'anna']].map(([n, e]) => mk(n, `${e}@touche.it`, 'referee'));
 const base = (name, date, place, weapon, category, n, zone, gender = 'M') => ({ id: uid(), ownerId: user.id, name, date, place, zone, weapon, category, gender, athletes: athletes(n), pools: null, de: null,
-  referees: REFS.map(r => ({ id: uid(), name: r, code: String(100000 + Math.floor(rnd() * 900000)) })) });
+  referees: REFS.map(r => ({ id: r.id, name: r.name })) });
 const assign = c => { let k = 0; c.pools?.forEach(p => { p.refereeId = c.referees[k++ % c.referees.length].id; }); c.de?.rounds.flat().forEach(m => { if (m.a && m.b) m.refereeId = c.referees[k++ % c.referees.length].id; }); };
 let clock = Date.now() - 3 * 3600e3; const tick = () => (clock += 20e3 + rnd() * 40e3);
 
@@ -49,12 +56,11 @@ const open = base('Gran Premio Colle Verde', '2026-10-18', 'Sala Armi Colle Verd
 const master = base('Trofeo Master Città di Esempio', '2026-09-20', 'Palestra Civica, Firenze', 'spada', 'Master', 10, 'master'); playPools(master); assign(master);
 const reg = base('Regionale Piemonte Giovanissimi', '2026-10-04', 'Sala d\'Armi Nord, Torino', 'fioretto', 'Under-14', 16, 'piemonte');
 
-const file = path.join(__dirname, '..', 'data', 'db.json');
-fs.mkdirSync(path.dirname(file), { recursive: true });
 const competitions = [done, live, open, master, reg];
-// Ranking dimostrativi per categoria/arma/sesso, come se caricati dai file Federscherma.
-const rankings = {};
-for (const c of competitions) rankings[[c.category, c.weapon, c.gender].map(x => x.toLowerCase()).join('|')] = { updated: Date.now(), file: 'ranking-demo.xlsx',
-  map: Object.fromEntries(c.athletes.filter(a => a.rank).map(a => [R.nameKey(a.name), a.rank])), count: c.athletes.filter(a => a.rank).length };
-fs.writeFileSync(file, JSON.stringify({ users: [user], sessions: {}, competitions, rankings }));
-console.log('Dati demo scritti. Accesso direttore: demo@touche.it / demo1234');
+competitions.forEach(c => store.saveComp(c));
+// Ranking dimostrativi per categoria/arma/sesso, come se importati dai file Federscherma.
+for (const c of competitions) store.importList({ category: c.category, weapon: c.weapon, gender: c.gender, file: 'ranking-demo.xlsx',
+  entries: c.athletes.filter(a => a.rank).map(a => ({ key: R.nameKey(a.name), name: a.name, club: a.club, pos: a.rank })) });
+store.close();
+console.log('Dati demo scritti. Password di tutti gli account: demo1234');
+console.log('  admin@touche.it (amministratore) · marche@touche.it / piemonte@touche.it (admin regionali) · demo@touche.it (direttore) · bruno|laura|enrico|anna@touche.it (arbitri)');

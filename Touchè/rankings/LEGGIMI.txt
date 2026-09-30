@@ -1,0 +1,12 @@
+Metti qui i file dei ranking Federscherma (.xlsx o .csv) e lancia:   npm run rankings
+
+Arma, categoria e sesso vengono dedotti dal nome del foglio, dal nome del file o dal titolo in testa al foglio
+(es. "Spada Maschile Assoluti.xlsx"). Se non si riesce, crea rankings/manifest.json:
+
+  { "ranking_xyz.xlsx": { "weapon": "spada", "category": "assoluti", "gender": "M" },
+    "altro.xlsx#Foglio2": { "weapon": "fioretto", "category": "under-14", "gender": "F" } }
+
+Valori: weapon = fioretto | spada | sciabola; gender = M | F;
+category = giovani | assoluti | under-23 | cadetti | juniores | under-14 | master.
+
+Per aggiornare i ranking: sostituisci i file e rilancia il comando (i file invariati vengono saltati).

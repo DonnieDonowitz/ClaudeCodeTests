@@ -24,6 +24,19 @@ function unzip(buf) {
   return files;
 }
 
+// Fogli con nome (workbook.xml + relazioni), nell'ordine del file.
+function xlsxNamedSheets(buf) {
+  const z = unzip(buf), rows = xlsxSheets(buf);
+  const wb = z['xl/workbook.xml']?.() || '', rels = z['xl/_rels/workbook.xml.rels']?.() || '';
+  const target = Object.fromEntries([...rels.matchAll(/<Relationship\b[^>]*>/g)].map(m => [/Id="([^"]+)"/.exec(m[0])?.[1], /Target="([^"]+)"/.exec(m[0])?.[1]]));
+  const order = Object.keys(z).filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a, b) => parseInt(a.match(/(\d+)\.xml/)[1]) - parseInt(b.match(/(\d+)\.xml/)[1]));
+  const named = [...wb.matchAll(/<sheet\b[^>]*>/g)].map(m => {
+    const t = target[/r:id="([^"]+)"/.exec(m[0])?.[1]] || '', f = 'xl/' + t.replace(/^\/?(xl\/)?/, '');
+    return { name: unesc(/name="([^"]*)"/.exec(m[0])?.[1] || ''), idx: order.indexOf(f) };
+  });
+  return rows.map((r, i) => ({ name: named.find(n => n.idx === i)?.name || named[i]?.name || `Foglio ${i + 1}`, rows: r }));
+}
+
 const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d)).replace(/&amp;/g, '&');
 const colIndex = ref => [...ref.replace(/\d+/g, '')].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1;
 
@@ -62,33 +75,37 @@ const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
 // Chiave indipendente dall'ordine di cognome e nome.
 const nameKey = s => norm(s).split(' ').filter(Boolean).sort().join(' ');
 
-// Cerca la riga di intestazione (posizione + cognome/nome) e legge atleti e posizioni.
-function extractRanking(rows) {
+// Cerca la riga di intestazione (posizione + cognome/nome + società) e legge gli atleti.
+// Restituisce [{ key, name, club, pos }] (per ogni atleta tiene la posizione migliore).
+function extractEntries(rows) {
   const has = (cell, re) => re.test(norm(cell));
+  const add = (out, name, club, pos) => { const k = nameKey(name); if (!out.has(k) || pos < out.get(k).pos) out.set(k, { key: k, name, club, pos }); };
   for (let h = 0; h < Math.min(rows.length, 40); h++) {
     const row = rows[h] || [];
-    const rankCol = row.findIndex(c => c !== undefined && has(c, /^(pos|posizione|rank|ranking|classifica|class|pl|n)$/));
+    const rankCol = row.findIndex(c => c !== undefined && has(c, /^(pos|posizione|rank|ranking|classifica|class|pl|n|n pos|posiz)$/));
     const nameCols = [];
-    row.forEach((c, i) => { if (c !== undefined && has(c, /^(cognome|nome|atleta|nominativo|cognome nome|nome cognome)$/)) nameCols.push(i); });
+    row.forEach((c, i) => { if (c !== undefined && has(c, /^(cognome|nome|atleta|atleti|nominativo|tesserato|cognome e nome|nome e cognome|cognome nome|nome cognome|atleta nominativo)$/)) nameCols.push(i); });
+    const clubCol = row.findIndex(c => c !== undefined && has(c, /^(societa|societa sportiva|club|sodalizio|sigla societa|denominazione societa|ass sportiva)$/));
     if (rankCol < 0 || !nameCols.length) continue;
     nameCols.sort((a, b) => a - b);
-    const out = {};
+    const out = new Map();
     for (const r of rows.slice(h + 1)) {
       const pos = parseInt(String(r?.[rankCol] ?? '').trim(), 10);
       const name = nameCols.map(i => String(r?.[i] ?? '').trim()).filter(Boolean).join(' ');
-      if (Number.isFinite(pos) && pos > 0 && name) { const k = nameKey(name); if (!(k in out) || pos < out[k]) out[k] = pos; }
+      if (Number.isFinite(pos) && pos > 0 && name) add(out, name, clubCol >= 0 ? String(r?.[clubCol] ?? '').trim() : '', pos);
     }
-    if (Object.keys(out).length) return out;
+    if (out.size) return [...out.values()];
   }
   // Nessuna intestazione: primo numero intero = posizione, primo testo = atleta.
-  const out = {};
+  const out = new Map();
   for (const r of rows) {
     const cells = (r || []).map(c => String(c ?? '').trim());
     const pos = parseInt(cells.find(c => /^\d+$/.test(c)), 10), name = cells.find(c => /[A-Za-zÀ-ÿ]{2}/.test(c));
-    if (pos > 0 && name) { const k = nameKey(name); if (!(k in out)) out[k] = pos; }
+    if (pos > 0 && name && !out.has(nameKey(name))) add(out, name, '', pos);
   }
-  return out;
+  return [...out.values()];
 }
+const extractRanking = rows => Object.fromEntries(extractEntries(rows).map(e => [e.key, e.pos]));
 
 function parseRankingFile(buf, filename = '') {
   const rankings = /\.csv$/i.test(filename) ? [extractRanking(csvRows(buf.toString('utf8')))] : xlsxSheets(buf).map(extractRanking);
@@ -97,6 +114,12 @@ function parseRankingFile(buf, filename = '') {
   return best;
 }
 
+// Da un file completo (.xlsx/.csv) a un elenco di liste [{ name, entries, title }], una per foglio.
+function parseRankingLists(buf, filename = '') {
+  if (/\.csv$/i.test(filename)) { const rows = csvRows(buf.toString('utf8')); return [{ name: '', entries: extractEntries(rows), title: rows.slice(0, 4).flat().join(' ') }]; }
+  return xlsxNamedSheets(buf).map(s => ({ name: s.name, entries: extractEntries(s.rows), title: s.rows.slice(0, 6).flat().join(' ') })).filter(l => l.entries.length);
+}
+
 const rankOf = (map, name) => map?.[nameKey(name)] ?? null;
 
-module.exports = { UNRANKED, norm, xlsxSheets, csvRows, extractRanking, parseRankingFile, nameKey, rankOf };
+module.exports = { UNRANKED, norm, xlsxSheets, xlsxNamedSheets, extractEntries, csvRows, extractRanking, parseRankingFile, parseRankingLists, nameKey, rankOf };

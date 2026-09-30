@@ -184,3 +184,6 @@ a.pl{color:inherit}a.pl:hover{text-decoration:underline}
 .zone span.zl.mono{color:var(--gold-b);font-size:11px}
 .zone.big .zl.mono{background:var(--gold-b);color:#111}.zone span.zl.mono.sm{font-size:7px}
 .zl.mono.sm{font-size:6px;letter-spacing:0}
+.btn.primary{background:var(--ink);color:var(--gold-b);display:inline-block;padding:10px 20px;border-radius:12px;font-weight:600}nav{flex-wrap:wrap;justify-content:flex-end}
+nav{flex-wrap:nowrap;white-space:nowrap;gap:12px;font-size:14px}nav a.mute{max-width:160px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:700px){nav{flex-wrap:wrap}}

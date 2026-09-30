@@ -1,1 +1,16 @@
-{ "name": "touche", "version": "0.1.0", "private": true, "scripts": { "start": "node server.js", "regen-brackets": "node scripts/regenerate-brackets.js", "seed": "node scripts/seed.js", "test": "node --test test/engine.test.js test/ranking.test.js" } }
+{
+  "name": "touche",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "regen-brackets": "node scripts/regenerate-brackets.js",
+    "seed": "node scripts/seed.js",
+    "test": "node --test test/engine.test.js test/ranking.test.js test/store.test.js test/api.test.js",
+    "rankings": "node scripts/import-rankings.js",
+    "create-user": "node scripts/create-user.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

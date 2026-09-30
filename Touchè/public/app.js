@@ -23,10 +23,12 @@ async function api(method, url, body) {
 const act = fn => async (...a) => { try { await fn(...a); } catch (e) { alert(e.message); } };
 const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'ora' : s < 3600 ? Math.round(s / 60) + ' min fa' : s < 86400 ? Math.round(s / 3600) + ' h fa' : new Date(t).toLocaleDateString('it-IT'); };
 
+const ROLE = { admin: 'Amministratore', regional: 'Admin regionale', director: 'Direttore di gara', referee: 'Arbitro' };
 function nav() {
-  $('#nav').innerHTML = !me ? `<a href="#/login">Accedi</a>`
-    : me.role === 'referee' ? `<span class="mute">Arbitro · ${esc(me.name)}</span><a href="#/c/${me.competitionId}">La mia gara</a><a href="#" id="out">Esci</a>`
-    : `<span class="mute">${esc(me.name)}</span><a href="#/new">Nuova gara</a><a href="#" id="out">Esci</a>`;
+  const l = (h, t) => `<a href="#/${h}">${t}</a>`;
+  $('#nav').innerHTML = !me ? l('login', 'Accedi')
+    : `${me.role === 'admin' ? l('admin', 'Account') : me.role === 'regional' ? l('admin', 'Account') : ''}${l('gestione', me.role === 'referee' ? 'Le mie gare' : me.role === 'director' ? 'Le mie gare' : 'Gestione')}
+    <a class="mute" href="#/account" title="${esc(ROLE[me.role])}${me.zone ? ' · ' + esc(ZONE[me.zone]) : ''}">${esc(me.name)}</a><a href="#" id="out">Esci</a>`;
   const o = $('#out'); if (o) o.onclick = async e => { e.preventDefault(); await api('POST', '/logout'); me = null; nav(); location.hash = '#/'; };
 }
 
@@ -50,36 +52,97 @@ async function home(zone) {
       <div><span class="badge ${c.status}">${live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span>${live && pr.total ? `<div class="bar"><i style="width:${Math.round(100 * pr.done / pr.total)}%"></i></div>` : `<span class="mute">${c.athletes} atleti</span>`}</div></a>`; }).join('') || '<p class="mute" style="padding:16px;margin:0">Nessuna gara in questa zona.</p>'}</div>`;
 }
 
-/* ---------- Accesso unificato ---------- */
-let loginRole = 'director';
-function authView(mode) {
-  const reg = mode === 'register', ref = !reg && loginRole === 'referee';
-  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h1>${reg ? 'Registrati' : 'Accedi'}</h1>
-  ${reg ? '<p class="mute">Nuovo account per direttori di gara.</p>' : `<div class="tabs seg"><a href="#" data-role="director" class="${ref ? '' : 'on'}">Direttore di gara</a><a href="#" data-role="referee" class="${ref ? 'on' : ''}">Arbitro</a></div>`}
-  <form id="f" style="display:grid;gap:10px">${ref ? `<p class="mute" style="margin:0">Inserisci il codice a 6 cifre che ti ha dato il direttore di gara.</p>
-  <input name="code" inputmode="numeric" maxlength="6" placeholder="000000" style="font-size:28px;text-align:center;letter-spacing:.3em" required>`
-  : `${reg ? '<input name="name" placeholder="Nome e cognome" required>' : ''}<input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Password" required>
-  ${reg ? '<input name="invite" placeholder="Codice invito" required>' : ''}`}
-  <button class="primary">${reg ? 'Crea account' : 'Entra'}</button></form>
-  ${ref ? '' : `<p class="mute"><a href="#/${reg ? 'login' : 'register'}">${reg ? 'Hai già un account? Accedi' : 'Nuovo direttore? Registrati'}</a></p>`}</div>`;
-  document.querySelectorAll('[data-role]').forEach(a => a.onclick = e => { e.preventDefault(); loginRole = a.dataset.role; authView('login'); });
-  $('#f').onsubmit = act(async e => {
-    e.preventDefault();
-    const d = Object.fromEntries(new FormData(e.target));
-    if (ref) { me = await api('POST', '/referee/login', d); nav(); location.hash = '#/c/' + me.competitionId; return; }
-    me = await api('POST', reg ? '/register' : '/login', d); me.role = 'director'; nav(); location.hash = '#/';
-  });
+/* ---------- Accesso unico per admin, admin regionali, direttori di gara e arbitri ---------- */
+function loginView() {
+  $('#app').innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h1>Accedi</h1>
+  <p class="mute">Direttori di gara, arbitri e amministratori accedono da qui con l'account creato per loro. Gli account si richiedono all'amministratore o al proprio comitato regionale.</p>
+  <form id="f" style="display:grid;gap:10px"><input name="email" type="email" placeholder="Email" autocomplete="username" required>
+  <input name="password" type="password" placeholder="Password" autocomplete="current-password" required><button class="primary">Entra</button></form></div>`;
+  $('#f').onsubmit = act(async e => { e.preventDefault(); me = await api('POST', '/login', Object.fromEntries(new FormData(e.target))); nav(); location.hash = me.role === 'referee' ? '#/gestione' : '#/'; });
 }
-function newView() {
-  if (!me || me.role !== 'director') return location.hash = '#/login';
+function accountView() {
+  if (!me) return location.hash = '#/login';
+  $('#app').innerHTML = `<h1>${esc(me.name)}</h1><p class="mute">${esc(ROLE[me.role])}${me.zone ? ' · ' + esc(ZONE[me.zone]) : ''} · ${esc(me.email)}</p>
+  <div class="card" style="max-width:420px"><label>Cambia password</label><form id="f" style="display:grid;gap:10px"><input name="current" type="password" placeholder="Password attuale" autocomplete="current-password" required>
+  <input name="password" type="password" placeholder="Nuova password (min. 8 caratteri)" autocomplete="new-password" minlength="8" required><button class="primary">Salva</button></form></div>`;
+  $('#f').onsubmit = act(async e => { e.preventDefault(); await api('POST', '/me/password', Object.fromEntries(new FormData(e.target))); e.target.reset(); alert('Password aggiornata'); });
+}
+
+/* ---------- Pannello account (admin: tutti · admin regionale: direttori e arbitri della sua zona) ---------- */
+let userFilter = '';
+async function adminView() {
+  if (!me || !['admin', 'regional'].includes(me.role)) return location.hash = '#/login';
+  const users = await api('GET', '/users'), adm = me.role === 'admin';
+  const roles = adm ? ['director', 'referee', 'regional', 'admin'] : ['director', 'referee'];
+  const zoneSel = (name, cur, blank) => `<select name="${name}" ${adm ? '' : 'disabled'}><option value="">${blank}</option>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === (adm ? cur : me.zone) ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`;
+  const shown = users.filter(u => !userFilter || u.role === userFilter);
+  $('#app').innerHTML = `<h1>Account</h1><p class="mute">${adm ? 'Crea e gestisci gli account di amministratori regionali, direttori di gara e arbitri.' : `Crea e gestisci direttori di gara e arbitri di ${esc(ZONE[me.zone])}.`}</p>
+  <div class="card"><label>Nuovo account</label><form id="nu" class="grid">
+    <div><label>Nome e cognome</label><input name="name" required></div><div><label>Email</label><input name="email" type="email" required></div>
+    <div><label>Password iniziale</label><input name="password" minlength="8" placeholder="min. 8 caratteri" required></div>
+    <div><label>Ruolo</label><select name="role">${roles.map(r => `<option value="${r}">${ROLE[r]}</option>`).join('')}</select></div>
+    <div><label>Zona</label>${zoneSel('zone', '', adm ? 'Nessuna (tutte)' : '')}</div><div style="align-self:end"><button class="primary">Crea account</button></div></form>
+    <p class="hint">${adm ? 'L\'admin regionale richiede una zona. Direttori e arbitri possono avere una zona (facoltativa).' : ''} La persona potrà cambiare la password da «il mio nome» in alto.</p></div>
+  <div class="tabs"><a href="#" data-uf="" class="${userFilter === '' ? 'on' : ''}">Tutti (${users.length})</a>${roles.map(r => `<a href="#" data-uf="${r}" class="${userFilter === r ? 'on' : ''}">${ROLE[r]} (${users.filter(u => u.role === r).length})</a>`).join('')}</div>
+  <div class="card" style="overflow-x:auto"><table><tr><th class="l">Nome</th><th class="l">Email</th><th class="l">Ruolo</th><th class="l">Zona</th><th></th></tr>${shown.map(u => `<tr style="${u.active ? '' : 'opacity:.5'}">
+    <td class="l">${esc(u.name)}</td><td class="l">${esc(u.email)}</td><td class="l">${ROLE[u.role]}</td>
+    <td class="l">${adm ? `<select class="mini" data-uzone="${u.id}"><option value="">—</option>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === u.zone ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>` : esc(ZONE[u.zone] || '—')}</td>
+    <td style="white-space:nowrap">${u.id === me.id ? '<span class="mute">tu</span>' : `<button class="small" data-uact="${u.id}" data-on="${u.active ? 1 : 0}">${u.active ? 'Disattiva' : 'Attiva'}</button> <button class="small" data-upw="${u.id}">Password</button> <button class="small danger" data-udel="${u.id}" data-n="${esc(u.name)}">✕</button>`}</td></tr>`).join('') || '<tr><td class="mute">Nessun account.</td></tr>'}</table></div>`;
+  $('#nu').onsubmit = act(async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target)); if (!adm) d.zone = me.zone; await api('POST', '/users', d); adminView(); });
+  document.querySelectorAll('[data-uf]').forEach(a => a.onclick = e => { e.preventDefault(); userFilter = a.dataset.uf; adminView(); });
+  document.querySelectorAll('[data-uact]').forEach(b => b.onclick = act(async () => { await api('PATCH', '/users/' + b.dataset.uact, { active: b.dataset.on !== '1' }); adminView(); }));
+  document.querySelectorAll('[data-uzone]').forEach(s => s.onchange = act(async () => { await api('PATCH', '/users/' + s.dataset.uzone, { zone: s.value }); adminView(); }));
+  document.querySelectorAll('[data-upw]').forEach(b => b.onclick = act(async () => { const p = prompt('Nuova password (min. 8 caratteri):'); if (p) { await api('POST', `/users/${b.dataset.upw}/password`, { password: p }); alert('Password aggiornata: le sessioni di quell\'utente sono state chiuse.'); } }));
+  document.querySelectorAll('[data-udel]').forEach(b => b.onclick = act(async () => { if (confirm(`Eliminare l'account di ${b.dataset.n}?`)) { await api('DELETE', '/users/' + b.dataset.udel); adminView(); } }));
+}
+
+/* ---------- Pannello gare: admin (tutte), admin regionale (la sua zona), direttore/arbitro (le proprie) ---------- */
+let gzone = '';
+async function manageView() {
+  if (!me) return location.hash = '#/login';
+  const [list, dirs] = await Promise.all([api('GET', '/manage/competitions' + (me.role === 'admin' && gzone ? '?zone=' + gzone : '')), ['admin', 'regional'].includes(me.role) ? api('GET', '/users').then(u => u.filter(x => x.role === 'director' && x.active)) : []]);
+  const mgr = ['admin', 'regional'].includes(me.role), title = me.role === 'regional' ? `Gestione ${esc(ZONE[me.zone])}` : me.role === 'admin' ? 'Gestione gare' : 'Le mie gare';
+  $('#app').innerHTML = `<div class="row2" style="justify-content:space-between"><h1>${me.role === 'regional' ? logo(me.zone, 1) : ''}${title}</h1>${me.role === 'referee' ? '' : '<a class="btn primary" href="#/new">+ Nuova gara</a>'}</div>
+  ${me.role === 'admin' ? `<p><select id="gz"><option value="">Tutte le zone</option>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === gzone ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></p>` : ''}
+  ${me.role === 'referee' ? '<p class="mute">Le gare in cui sei stato assegnato: apri la gara e tocca un assalto per inserire il risultato.</p>' : ''}
+  <div class="card" style="overflow-x:auto"><table><tr><th class="l">Gara</th>${me.role === 'admin' ? '<th class="l">Zona</th>' : ''}<th class="l">Data</th><th class="l">Stato</th>${me.role !== 'referee' ? '<th class="l">Direttore</th>' : ''}<th></th></tr>${list.map(c => `<tr>
+    <td class="l"><a href="#/c/${c.id}/_"><b>${esc(c.name)}</b></a><div class="mute">${esc(c.weapon)} · ${esc(c.category)} ${esc(c.gender)} · ${esc(c.place)} · ${c.athletes} atleti</div></td>
+    ${me.role === 'admin' ? `<td class="l">${esc(ZONE[c.zone])}</td>` : ''}<td class="l">${esc(c.date)}</td><td class="l"><span class="badge ${c.status}">${STATUS[c.status]}</span></td>
+    ${me.role !== 'referee' ? `<td class="l">${mgr ? `<select class="mini" data-own="${c.id}"><option value="">—</option>${(dirs.some(d => d.id === c.ownerId) || !c.ownerId ? dirs : [...dirs, { id: c.ownerId, name: c.owner }]).map(d => `<option value="${d.id}" ${d.id === c.ownerId ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select>` : esc(c.owner || '—')}</td>` : ''}
+    <td style="white-space:nowrap">${me.role === 'referee' ? '' : `<button class="small" data-edit='${esc(JSON.stringify(c))}'>Modifica</button> <button class="small danger" data-del="${c.id}" data-n="${esc(c.name)}">✕</button>`}</td></tr>`).join('') || '<tr><td class="mute">Nessuna gara.</td></tr>'}</table></div>`;
+  const gz = $('#gz'); if (gz) gz.onchange = () => { gzone = gz.value; manageView(); };
+  document.querySelectorAll('[data-own]').forEach(s => s.onchange = act(async () => { await api('PATCH', '/competitions/' + s.dataset.own, { ownerId: s.value }); manageView(); }));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = act(async () => { if (confirm(`Eliminare «${b.dataset.n}» con tutti i risultati?`)) { await api('DELETE', '/competitions/' + b.dataset.del); manageView(); } }));
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editComp(JSON.parse(b.dataset.edit)));
+}
+function editComp(c) {
+  const d = document.createElement('dialog'), lock = c.status !== 'iscrizioni';
+  d.innerHTML = `<h3>Modifica gara</h3><form id="ef" class="grid" style="min-width:min(520px,80vw)">
+    <div><label>Nome</label><input name="name" value="${esc(c.name)}" required></div><div><label>Data</label><input type="date" name="date" value="${esc(c.date)}"></div>
+    <div><label>Luogo</label><input name="place" value="${esc(c.place)}"></div>
+    <div><label>Categoria</label><select name="category" ${lock ? 'disabled' : ''}>${CATEGORIES.map(x => `<option ${x === c.category ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Arma</label><select name="weapon" ${lock ? 'disabled' : ''}>${['spada', 'fioretto', 'sciabola'].map(x => `<option ${x === c.weapon ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    <div><label>Sesso</label><select name="gender" ${lock ? 'disabled' : ''}><option value="M" ${c.gender === 'M' ? 'selected' : ''}>Maschile</option><option value="F" ${c.gender === 'F' ? 'selected' : ''}>Femminile</option></select></div>
+    ${me.role === 'admin' ? `<div><label>Zona</label><select name="zone">${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === c.zone ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>` : ''}
+    </form>${lock ? '<p class="hint">Arma, categoria e sesso non si cambiano dopo la generazione dei gironi.</p>' : ''}
+    <div class="row2"><button id="no">Annulla</button><button class="primary" id="ok">Salva</button></div>`;
+  document.body.appendChild(d); d.showModal(); d.onclose = () => d.remove();
+  d.querySelector('#no').onclick = () => d.close();
+  d.querySelector('#ok').onclick = act(async () => { const f = Object.fromEntries(new FormData(d.querySelector('#ef'))); await api('PATCH', '/competitions/' + c.id, f); d.close(); manageView(); });
+}
+async function newView() {
+  if (!me || me.role === 'referee') return location.hash = '#/login';
+  const fixed = me.role === 'regional' || (me.role === 'director' && me.zone), mgr = ['admin', 'regional'].includes(me.role);
+  const dirs = mgr ? (await api('GET', '/users')).filter(u => u.role === 'director' && u.active) : [];
   $('#app').innerHTML = `<h1>Nuova gara</h1><div class="card"><form id="f" class="grid">
   <div><label>Nome</label><input name="name" required></div><div><label>Data</label><input type="date" name="date"></div>
-  <div><label>Zona</label><select name="zone">${Object.entries(ZONE).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></div>
+  <div><label>Zona</label><select name="zone" ${fixed ? 'disabled' : ''}>${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === (fixed ? me.zone : 'nazionale') ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+  ${mgr ? `<div><label>Direttore di gara</label><select name="ownerId"><option value="">Da assegnare</option>${dirs.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select></div>` : ''}
   <div><label>Luogo</label><input name="place"></div><div><label>Categoria</label><select name="category">${CATEGORIES.map(x => `<option>${x}</option>`).join('')}</select></div>
   <div><label>Sesso</label><select name="gender"><option value="M">Maschile</option><option value="F">Femminile</option></select></div>
   <div><label>Arma</label><select name="weapon"><option>spada</option><option>fioretto</option><option>sciabola</option></select></div>
   <div style="align-self:end"><button class="primary">Crea</button></div></form></div>`;
-  $('#f').onsubmit = act(async e => { e.preventDefault(); const r = await api('POST', '/competitions', Object.fromEntries(new FormData(e.target))); location.hash = '#/c/' + r.id; });
+  $('#f').onsubmit = act(async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target)); if (fixed) d.zone = me.zone; const r = await api('POST', '/competitions', d); location.hash = '#/c/' + r.id; });
 }
 
 /* ---------- Gara ---------- */
@@ -93,6 +156,7 @@ async function compView(id, t, poll) {
   const n = id => name[id] ? hl(name[id].name) : '<span class="mute">—</span>';
   const ae = document.activeElement, keep = ae?.dataset?.live !== undefined && $('#app').contains(ae)
     ? { sel: `[data-de="${ae.dataset.de}"][data-s="${ae.dataset.s}"]`, v: ae.value } : null;
+  if (tab === 'arbitri') refPool = await api('GET', '/referees').catch(() => []);
   const body = { atleti: () => athletesTab(c), gironi: () => poolsTab(c, n), classifica: () => rankTab(c, n), tabellone: () => bracketTab(c, n), finale: () => finalTab(c, n), arbitri: () => refereesTab(c) }[tab]();
   const mineP = c.referee ? (c.pools || []).filter(p => p.refereeId === c.referee.id).length : 0;
   const mineM = c.referee ? (c.de?.rounds || []).flat().filter(m => m.refereeId === c.referee.id && !m.winner).length : 0;
@@ -195,12 +259,15 @@ function bracketTab(c, n0) {
     (c.canEdit ? `<div class="card row2" style="margin-top:14px"><button class="danger" id="resetDE">Rigenera tabellone</button></div>` : '');
 }
 
+let refPool = [];
 function refereesTab(c) {
   const used = id => (c.pools || []).filter(p => p.refereeId === id).length + (c.de?.rounds || []).flat().filter(m => m.refereeId === id).length;
-  return `<div class="card"><label>Arbitri della gara</label><table>${(c.referees || []).map(r => `<tr><td class="l">${esc(r.name)}<div class="mute">${used(r.id)} assegnazioni</div></td><td><span class="code">${r.code}</span></td><td><button class="small danger" data-rmref="${r.id}">✕</button></td></tr>`).join('') || '<tr><td class="mute">Nessun arbitro.</td></tr>'}</table></div>
-    <div class="card"><form id="addRef" class="row2"><input name="name" placeholder="Nome arbitro" style="flex:1;min-width:180px" required><button class="primary">Aggiungi</button></form></div>
+  const free = refPool.filter(r => !(c.referees || []).some(x => x.id === r.id));
+  return `<div class="card"><label>Arbitri della gara</label><table>${(c.referees || []).map(r => `<tr><td class="l">${esc(r.name)}<div class="mute">${used(r.id)} assegnazioni</div></td><td><button class="small danger" data-rmref="${r.id}">✕</button></td></tr>`).join('') || '<tr><td class="mute">Nessun arbitro.</td></tr>'}</table></div>
+    <div class="card"><form id="addRef" class="row2"><select name="userId" style="flex:1;min-width:180px" required><option value="">Scegli un arbitro…</option>${free.map(r => `<option value="${r.id}">${esc(r.name)}${r.zone ? ' · ' + esc(ZONE[r.zone]) : ''}</option>`).join('')}</select><button class="primary">Aggiungi</button></form>
+    ${refPool.length ? '' : '<p class="hint">Non ci sono arbitri registrati: chiedi all\'amministratore o al comitato regionale di creare gli account.</p>'}</div>
     <div class="card row2"><button id="autoRef">Assegna automaticamente</button><span class="mute">Distribuisce gli arbitri su gironi e assalti.</span></div>
-    <p class="mute">Ogni arbitro apre <b>${esc(location.origin)}/#/arbitro</b> dal proprio dispositivo e inserisce il codice a 6 cifre: potrà registrare solo i risultati dei suoi gironi e assalti, visibili subito a tutti.</p>`;
+    <p class="mute">Gli arbitri accedono con il proprio account e possono registrare solo i risultati dei gironi e degli assalti che hai assegnato loro: sono visibili subito a tutti.</p>`;
 }
 
 function finalTab(c, n) {
@@ -249,7 +316,7 @@ function bind(c) {
   on('#csv', async () => exportCSV(c));
   on('#print', async () => print());
   on('#autoRef', async () => { await api('POST', `/competitions/${c.id}/referees/auto`); render(); });
-  const ar = $('#addRef'); if (ar) ar.onsubmit = act(async e => { e.preventDefault(); await api('POST', `/competitions/${c.id}/referees`, { name: new FormData(ar).get('name') }); render(); });
+  const ar = $('#addRef'); if (ar) ar.onsubmit = act(async e => { e.preventDefault(); await api('POST', `/competitions/${c.id}/referees`, { userId: new FormData(ar).get('userId') }); render(); });
   all('[data-rmref]', b => b.onclick = act(async () => { if (confirm('Rimuovere l\'arbitro?')) { await api('DELETE', `/competitions/${c.id}/referees/${b.dataset.rmref}`); render(); } }));
   all('[data-rm]', b => b.onclick = act(async () => { await api('DELETE', `/competitions/${c.id}/athletes/${b.dataset.rm}`); render(); }));
   all('[data-ab]', b => b.onclick = act(async () => { await api('POST', `/competitions/${c.id}/athletes/${b.dataset.ab}/absent`); render(); }));
@@ -341,13 +408,14 @@ async function render(poll) {
   HL = sect === 'c' && h ? decodeURIComponent(h) : '';
   if (sect !== 'cerca') $('#q').value = '';
   try {
-    if (sect === 'login') authView('login');
-    else if (sect === 'register') authView('register');
-    else if (sect === 'arbitro') { loginRole = 'referee'; authView('login'); }
+    if (sect === 'login' || sect === 'register' || sect === 'arbitro') loginView();
+    else if (sect === 'admin') await adminView();
+    else if (sect === 'gestione') await manageView();
+    else if (sect === 'account') accountView();
     else if (sect === 'cerca') await searchView(id);
     else if (sect === 'a') await athleteView(id);
     else if (sect === 's') await clubView(id);
-    else if (sect === 'new') newView();
+    else if (sect === 'new') await newView();
     else if (sect === 'c') { await compView(id, t, poll === true); if (HL && poll !== true) document.querySelector('.hl')?.scrollIntoView({ block: 'center' }); timer = setTimeout(() => render(true), 4000); return; }
     else { await home(sect === 'z' ? id : null); timer = setTimeout(() => render(true), 4000); }
   } catch (e) { $('#app').innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
