@@ -78,6 +78,13 @@ const clubKeyOf = text => S.clubKeyByName(R.norm(text)) || R.norm(text);
 const clubInfo = code => { const r = S.clubRow(R.norm(code)), p = provinceOf(code); return { name: r ? r.name : code, code, city: r?.city || '', province: p ? p.name : '' }; };
 const nameOf = id => S.user(id)?.name;
 
+// Quota di eliminati subito dopo i gironi, decisa dal direttore alla creazione (percentuale dei presenti, arrotondata per difetto).
+const cutPctOf = v => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(90, Math.max(0, n)) : 0; };
+function cutInfo(c) {
+  const n = active(c).length, pct = c.cutPct || 0;
+  const elim = Math.min(Math.floor(n * pct / 100), Math.max(0, n - 2));
+  return { pct, total: n, qualify: n - elim, eliminated: elim };
+}
 function view(c, req) {
   const u = userOf(req);
   const out = { ...c, zone: c.zone || 'nazionale', status: status(c), owner: nameOf(c.ownerId), canEdit: canManage(u, c) };
@@ -85,8 +92,11 @@ function view(c, req) {
   out.rankingInfo = ri ? { updated: ri.updated, count: ri.count, file: ri.file } : null;
   out.referee = isAssigned(u, c) ? { id: u.id, name: u.name } : null;
   out.athletes = c.athletes.map(a => ({ ...a, clubKey: a.club ? clubKeyOf(a.club) : '' }));
-  if (c.pools) out.ranking = E.ranking(c.pools, active(c), c.lots);
-  if (c.de) out.final = E.finalRanking(c.de, out.ranking.map(r => r.id));
+  out.cut = cutInfo(c);
+  if (c.pools) {
+    out.ranking = E.ranking(c.pools, active(c), c.lots).map((r, i) => ({ ...r, qualified: i < out.cut.qualify }));
+    if (c.de) { const ids = out.ranking.map(r => r.id); out.final = E.finalRanking(c.de, ids, ids.slice(out.cut.qualify)); }
+  }
   return out;
 }
 const score = (v, max) => { const n = Number(v); if (!Number.isInteger(n) || n < 0 || n > max) bad('Punteggio non valido'); return n; };
@@ -168,7 +178,7 @@ route('GET', '/api/referees', req => { need(req, 'admin', 'regional', 'director'
 
 // ---- Competizioni ----
 const brief = c => ({ id: c.id, name: c.name, date: c.date, place: c.place, weapon: c.weapon, category: c.category, gender: c.gender || 'M',
-  athletes: c.athletes.length, status: status(c), ownerId: c.ownerId, owner: nameOf(c.ownerId), zone: c.zone || 'nazionale', progress: progress(c) });
+  athletes: c.athletes.length, cutPct: c.cutPct || 0, status: status(c), ownerId: c.ownerId, owner: nameOf(c.ownerId), zone: c.zone || 'nazionale', progress: progress(c) });
 route('GET', '/api/competitions', () => S.comps().map(brief).sort((a, b) => (b.date || '').localeCompare(a.date || '')));
 // Pannello di gestione: admin = tutte (filtro zona), regionale = la propria zona, direttore = le proprie.
 route('GET', '/api/manage/competitions', (req, b, res, [], url) => {
@@ -189,13 +199,14 @@ route('POST', '/api/competitions', (req, b) => {
     ownerId = o.id;
   } else if (u.role !== 'director' && b.ownerId === '') ownerId = null;
   const c = { id: uid(), ownerId, name, date: b.date || '', place: String(b.place || ''), weapon: WEAPONS.includes(b.weapon) ? b.weapon : 'spada',
-    category: String(b.category || ''), gender: b.gender === 'F' ? 'F' : 'M', zone, referees: [], athletes: [], pools: null, de: null };
+    category: String(b.category || ''), gender: b.gender === 'F' ? 'F' : 'M', zone, cutPct: cutPctOf(b.cutPct), referees: [], athletes: [], pools: null, de: null };
   S.saveComp(c); return { id: c.id };
 });
 route('PATCH', '/api/competitions/(\\w+)', (req, b, res, [id]) => {
   const c = manage(req, id), u = userOf(req);
   for (const k of ['name', 'place', 'date']) if (b[k] !== undefined) c[k] = String(b[k]).trim();
   if (!c.name) bad('Inserisci il nome della gara');
+  if (b.cutPct !== undefined && cutPctOf(b.cutPct) !== (c.cutPct || 0)) { if (c.de) bad('Il tabellone è già stato generato: la quota di eliminati non si cambia'); c.cutPct = cutPctOf(b.cutPct); }
   if (['weapon', 'category', 'gender'].some(k => b[k] !== undefined && b[k] !== c[k])) {
     if (c.pools) bad('Arma, categoria e sesso non si cambiano dopo la generazione dei gironi');
     if (b.weapon !== undefined) c.weapon = WEAPONS.includes(b.weapon) ? b.weapon : c.weapon;
@@ -283,7 +294,7 @@ route('POST', '/api/competitions/(\\w+)/de', (req, b, res, [id]) => {
   const c = manage(req, id);
   if (!c.pools) bad('Genera prima i gironi');
   if (c.pools.some(p => p.bouts.some(x => x.sa == null))) bad('Completa tutti gli assalti dei gironi');
-  c.de = E.buildBracket(E.ranking(c.pools, active(c), c.lots).map(r => r.id)); S.saveComp(c); return view(c, req);
+  c.de = E.buildBracket(E.ranking(c.pools, active(c), c.lots).map(r => r.id).slice(0, cutInfo(c).qualify)); S.saveComp(c); return view(c, req);
 });
 route('DELETE', '/api/competitions/(\\w+)/de', (req, b, res, [id]) => {
   const c = manage(req, id); c.de = null; S.saveComp(c); return view(c, req);

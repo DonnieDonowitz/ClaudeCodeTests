@@ -44,13 +44,14 @@ function playPools(c, upTo = Infinity) {
 }
 function playDE(c) {
   const rk = E.ranking(c.pools, c.athletes, c.lots).map(r => r.id);
-  c.de = E.buildBracket(rk);
+  const q = c.athletes.length - Math.floor(c.athletes.length * (c.cutPct || 0) / 100);
+  c.de = E.buildBracket(rk.slice(0, q));
   c.de.rounds.forEach((rd, r) => rd.forEach((m, i) => {
     if (m.a && m.b && !m.winner) { const w = rnd() < 0.5 + (rk.indexOf(m.b) - rk.indexOf(m.a)) * 0.03; const lose = Math.floor(rnd() * 14); E.setDEScore(c.de.rounds, r, i, w ? 15 : lose, w ? lose : 15); m.t = tick(); }
   }));
 }
 
-const done = base('Trofeo Città di Esempio', '2026-09-13', 'Palazzetto Comunale, Torino', 'spada', 'Assoluti', 22, 'nazionale'); playPools(done); assign(done); playDE(done); assign(done);
+const done = base('Trofeo Città di Esempio', '2026-09-13', 'Palazzetto Comunale, Torino', 'spada', 'Assoluti', 22, 'nazionale'); done.cutPct = 20; playPools(done); assign(done); playDE(done); assign(done);
 const live = base('Coppa Adriatica', '2026-09-27', 'PalaScherma, Pesaro', 'fioretto', 'Juniores', 14, 'marche', 'F'); playPools(live, 30); assign(live);
 const open = base('Gran Premio Colle Verde', '2026-10-18', 'Sala Armi Colle Verde, Verona', 'sciabola', 'Assoluti', 12, 'veneto');
 const master = base('Trofeo Master Città di Esempio', '2026-09-20', 'Palestra Civica, Firenze', 'spada', 'Master', 10, 'master'); playPools(master); assign(master);

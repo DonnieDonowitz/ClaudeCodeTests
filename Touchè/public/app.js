@@ -125,6 +125,7 @@ function editComp(c) {
     <div><label>Categoria</label><select name="category" ${lock ? 'disabled' : ''}>${CATEGORIES.map(x => `<option ${x === c.category ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
     <div><label>Arma</label><select name="weapon" ${lock ? 'disabled' : ''}>${['spada', 'fioretto', 'sciabola'].map(x => `<option ${x === c.weapon ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
     <div><label>Sesso</label><select name="gender" ${lock ? 'disabled' : ''}><option value="M" ${c.gender === 'M' ? 'selected' : ''}>Maschile</option><option value="F" ${c.gender === 'F' ? 'selected' : ''}>Femminile</option></select></div>
+    <div><label>Eliminati dopo i gironi (%)</label><input name="cutPct" type="number" min="0" max="90" value="${c.cutPct || 0}" ${c.status === 'tabellone' || c.status === 'concluso' ? 'disabled' : ''}></div>
     ${me.role === 'admin' ? `<div><label>Zona</label><select name="zone">${Object.entries(ZONE).map(([k, v]) => `<option value="${k}" ${k === c.zone ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>` : ''}
     </form>${lock ? '<p class="hint">Arma, categoria e sesso non si cambiano dopo la generazione dei gironi.</p>' : ''}
     <div class="row2"><button id="no">Annulla</button><button class="primary" id="ok">Salva</button></div>`;
@@ -143,6 +144,7 @@ async function newView() {
   <div><label>Luogo</label><input name="place"></div><div><label>Categoria</label><select name="category">${CATEGORIES.map(x => `<option>${x}</option>`).join('')}</select></div>
   <div><label>Sesso</label><select name="gender"><option value="M">Maschile</option><option value="F">Femminile</option></select></div>
   <div><label>Arma</label><select name="weapon"><option>spada</option><option>fioretto</option><option>sciabola</option></select></div>
+  <div><label>Eliminati dopo i gironi (%)</label><input name="cutPct" type="number" min="0" max="90" value="0"><p class="hint" style="margin:4px 0 0">0 = passano tutti. Es. 20 = il 20% dei presenti è eliminato dopo i gironi.</p></div>
   <div style="align-self:end"><button class="primary">Crea</button></div></form></div>`;
   $('#f').onsubmit = act(async e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target)); if (fixed) d.zone = me.zone; const r = await api('POST', '/competitions', d); location.hash = '#/c/' + r.id; });
 }
@@ -171,9 +173,18 @@ async function compView(id, t, poll) {
   if (keep) { const el = document.querySelector('input[data-live]' + keep.sel); if (el) { el.value = keep.v; el.focus(); } }
 }
 
+// Quota di eliminati dopo i gironi (scelta dal direttore alla creazione della gara).
+function cutBanner(c) {
+  const k = c.cut; if (!k) return '';
+  const n = k.total;
+  return k.pct > 0
+    ? `<div class="banner cut"><b>Dopo i gironi passano ${k.qualify} atleti su ${n}</b> · eliminati ${k.eliminated} (${k.pct}% dei presenti). Gli altri restano classificati secondo la posizione nella classifica dei gironi.</div>`
+    : `<div class="banner cut">Nessuna eliminazione dopo i gironi: tutti i ${n} atleti passano al tabellone.</div>`;
+}
+
 function athletesTab(c) {
   const e = c.canEdit && !c.pools, ri = c.rankingInfo;
-  return `<div class="card"><table><tr><th>#</th><th>Ranking</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
+  return cutBanner(c) + `<div class="card"><table><tr><th>#</th><th>Ranking</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
     c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>` : ''}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
     `</table>${c.athletes.length ? '' : '<p class="mute">Nessun iscritto.</p>'}<p class="hint">Gli atleti sono ordinati per ranking; senza ranking valgono 9999 e vengono sorteggiati.</p></div>` +
     (e ? `<div class="card"><label>Ranking Federscherma · ${esc(c.category)} · ${esc(c.weapon)} · ${c.gender === 'F' ? 'femminile' : 'maschile'}</label>
@@ -193,7 +204,7 @@ function poolsTab(c, n) {
   const st = Object.fromEntries(c.ranking.map(r => [r.id, r]));
   const rk = Object.fromEntries(c.ranking.map((r, i) => [r.id, i]));
   const club = Object.fromEntries(c.athletes.map(a => [a.id, a.club]));
-  return `<div class="pools">` + c.pools.map(p => {
+  return cutBanner(c) + `<div class="pools">` + c.pools.map(p => {
     const mine = c.referee && p.refereeId === c.referee.id, edit = !c.de && (c.canEdit || mine), A = p.athletes;
     const order = [...A].sort((x, y) => rk[x] - rk[y]), any = A.some(a => st[a].m);
     const cell = (i, j) => {
@@ -212,12 +223,13 @@ function poolsTab(c, n) {
       <div class="mx-wrap"><table class="mx"><tr><th>#</th><th class="l">Atleta</th>${A.map((_, i) => `<th>${i + 1}</th>`).join('')}<th>V</th><th>M</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th><th>Pl</th></tr>${rows}</table></div>
       ${edit ? '<p class="hint">Tocca una cella per inserire le stoccate dell\'assalto.</p>' : ''}</div>`;
   }).join('') + `</div>` + (c.canEdit ? `<div class="card row2" style="margin-top:16px">
-    ${!c.de ? `<button class="primary" id="genDE">Genera tabellone</button><button class="danger" id="resetPools">Rigenera gironi</button>` : '<span class="mute">Tabellone generato: gironi bloccati.</span>'}</div>` : '');
+    ${!c.de ? `<button class="primary" id="genDE">Genera tabellone${c.cut?.eliminated ? ` (passano ${c.cut.qualify})` : ''}</button><button class="danger" id="resetPools">Rigenera gironi</button>` : '<span class="mute">Tabellone generato: gironi bloccati.</span>'}</div>` : '');
 }
 
 function rankTab(c, n) {
-  return `<div class="card"><table><tr><th>Pos</th><th class="l">Atleta</th><th>V</th><th>M</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th></tr>` +
-    c.ranking.map(r => `<tr><td>${r.rank}${r.tie ? '*' : ''}</td><td class="l">${n(r.id)}</td><td>${r.v}</td><td>${r.m}</td><td>${r.ratio.toFixed(2)}</td><td>${r.ts}</td><td>${r.tr}</td><td>${r.ind > 0 ? '+' : ''}${r.ind}</td></tr>`).join('') + '</table>' +
+  const k = c.cut, elim = k && k.eliminated > 0;
+  return cutBanner(c) + `<div class="card"><table><tr><th>Pos</th><th class="l">Atleta</th><th>V</th><th>M</th><th>V/M</th><th>TS</th><th>TR</th><th>Ind</th>${elim ? '<th></th>' : ''}</tr>` +
+    c.ranking.map((r, i) => `${elim && i === k.qualify ? `<tr class="cutline"><td colspan="9">▼ Eliminati dopo i gironi (${k.eliminated})</td></tr>` : ''}<tr class="${elim && !r.qualified ? 'elim' : ''}"><td>${r.rank}${r.tie ? '*' : ''}</td><td class="l">${n(r.id)}</td><td>${r.v}</td><td>${r.m}</td><td>${r.ratio.toFixed(2)}</td><td>${r.ts}</td><td>${r.tr}</td><td>${r.ind > 0 ? '+' : ''}${r.ind}</td>${elim ? `<td>${r.qualified ? '<span class="badge qual">Passa</span>' : '<span class="badge out">Eliminato</span>'}</td>` : ''}</tr>`).join('') + '</table>' +
     (c.ranking.some(r => r.tie) ? '<p class="mute">* Ex aequo su V/M, indice e TS: posizione decisa per sorteggio.</p>' : '') + '</div>';
 }
 

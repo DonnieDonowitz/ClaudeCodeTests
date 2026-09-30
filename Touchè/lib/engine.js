@@ -172,7 +172,7 @@ function setDEForfeit(rounds, r, i, side) {
 }
 
 // Classifica finale: 1°, 2°, due 3° ex aequo (semifinali), poi per turno di uscita e classifica gironi.
-function finalRanking(de, poolRank) {
+function finalRanking(de, poolRank, eliminated = []) {
   const out = []; const seen = new Set();
   const push = (id, pos, tie) => { if (id && !seen.has(id)) { seen.add(id); out.push({ id, pos, tie: !!tie }); } };
   const R = de.rounds, last = R.length - 1;
@@ -187,6 +187,8 @@ function finalRanking(de, poolRank) {
     losers.forEach(id => push(id, pos, r === last - 1));
     pos += losers.length;
   }
+  // Eliminati direttamente dopo i gironi: dopo tutti quelli del tabellone, in ordine di classifica gironi (ex aequo sulla stessa posizione).
+  eliminated.forEach(id => push(id, pos, false));
   return out;
 }
 

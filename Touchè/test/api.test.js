@@ -51,3 +51,29 @@ test('permessi per ruolo', async () => {
   const me = (await call('admin', 'GET', '/me')).body;
   assert.equal((await call('admin', 'DELETE', '/users/' + me.id)).status, 400);
 });
+
+test('quota di eliminati dopo i gironi', async () => {
+  S.createUser({ name: 'Dir2', email: 'dir2@x.it', password: 'password1', role: 'director' }); await login('dir2', 'dir2@x.it');
+  const id = (await call('dir2', 'POST', '/competitions', { name: 'Con taglio', weapon: 'spada', category: 'Assoluti', cutPct: 25 })).body.id;
+  await call('dir2', 'POST', `/competitions/${id}/athletes`, { text: Array.from({ length: 8 }, (_, i) => `Atleta${'ABCDEFGH'[i]} Nome, Club`).join('\n') });
+  let v = (await call('dir2', 'GET', '/competitions/' + id)).body;
+  assert.deepEqual([v.cut.pct, v.cut.qualify, v.cut.eliminated], [25, 6, 2]);
+  v = (await call('dir2', 'POST', `/competitions/${id}/pools`, { poolCount: 2 })).body;
+  v.pools.forEach((p, pi) => p.bouts.forEach((b, i) => { b._p = pi + 1; b._i = i; }));
+  for (const [pi, p] of v.pools.entries()) for (const [i] of p.bouts.entries()) await call('dir2', 'PUT', `/competitions/${id}/pools/${pi + 1}/bouts/${i}`, { sa: 5, sb: 1 });
+  v = (await call('dir2', 'GET', '/competitions/' + id)).body;
+  assert.equal(v.ranking.filter(r => r.qualified).length, 6);
+  v = (await call('dir2', 'POST', `/competitions/${id}/de`)).body;
+  const inBracket = new Set(v.de.rounds[0].flatMap(m => [m.a, m.b]).filter(Boolean));
+  assert.equal(inBracket.size, 6);
+  assert.equal((await call('dir2', 'PATCH', '/competitions/' + id, { cutPct: 50 })).status, 400);
+  for (let r = 0; r < v.de.rounds.length; r++) for (let i = 0; i < v.de.rounds[r].length; i++) {
+    const m = (await call('dir2', 'GET', '/competitions/' + id)).body.de.rounds[r][i];
+    if (m.a && m.b && !m.winner) await call('dir2', 'PUT', `/competitions/${id}/de/${r}/${i}`, { sa: 15, sb: 3 });
+  }
+  v = (await call('dir2', 'GET', '/competitions/' + id)).body;
+  assert.equal(v.final.length, 8);
+  const tail = v.final.slice(-2).map(f => f.id), elim = v.ranking.filter(r => !r.qualified).map(r => r.id);
+  assert.deepEqual(tail, elim);
+  assert.equal(v.final.at(-1).pos, 7);
+});
