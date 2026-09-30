@@ -7,7 +7,7 @@
 // Per aggiornare i ranking: sostituisci i file xlsx nella cartella e rilancia il comando.
 const path = require('path');
 const { open } = require('../lib/store');
-const { importDir } = require('../lib/rankingImport');
+const { importDir, importClubs } = require('../lib/rankingImport');
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i < 0 ? d : process.argv[i + 1]; };
 const flag = n => process.argv.includes('--' + n);
@@ -18,6 +18,7 @@ let rep;
 try {
   const store = open(dbFile);
   rep = importDir(store, dir, { dryRun: flag('dry-run'), force: flag('force'), season: arg('season', '') });
+  if (!flag('dry-run')) { const n = importClubs(store, dir); if (n != null) console.log(`Società: ${n} codici importati da societa.csv\n`); }
   store.close();
 } catch (e) { console.error(e.code === 'ENOENT' ? `Cartella non trovata: ${dir}` : e.message); process.exit(1); }
 

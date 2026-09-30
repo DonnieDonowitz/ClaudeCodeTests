@@ -34,7 +34,9 @@ function open(file) {
     list_key TEXT NOT NULL REFERENCES ranking_lists(key) ON DELETE CASCADE, name_key TEXT NOT NULL, name TEXT NOT NULL,
     club TEXT NOT NULL DEFAULT '', club_key TEXT NOT NULL DEFAULT '', pos INTEGER NOT NULL, PRIMARY KEY(list_key, name_key));
   CREATE INDEX IF NOT EXISTS re_name ON ranking_entries(name_key);
-  CREATE INDEX IF NOT EXISTS re_club ON ranking_entries(club_key);`);
+  CREATE INDEX IF NOT EXISTS re_club ON ranking_entries(club_key);
+  CREATE TABLE IF NOT EXISTS clubs(code_key TEXT PRIMARY KEY, code TEXT NOT NULL, name TEXT NOT NULL, name_key TEXT NOT NULL, city TEXT NOT NULL DEFAULT '');
+  CREATE INDEX IF NOT EXISTS clubs_name ON clubs(name_key);`);
 
   const q = sql => db.prepare(sql);
   const tx = fn => (...a) => { db.exec('BEGIN'); try { const r = fn(...a); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
@@ -141,6 +143,23 @@ function open(file) {
     rankedPerson: nk => q(`SELECT MAX(name) name, MAX(club) club FROM ranking_entries WHERE name_key=?`).get(nk),
     clubRanked: ck => q(`SELECT name_key key, MAX(name) name, MAX(club) club FROM ranking_entries WHERE club_key=? GROUP BY name_key`).all(ck),
     clubOfRanked: nk => q(`SELECT club FROM ranking_entries WHERE name_key=? AND club<>'' ORDER BY pos LIMIT 1`).get(nk)?.club || '',
+  });
+
+  // --- Società (codice Federscherma → nome) ---
+  Object.assign(S, {
+    importClubs: tx(rows => {
+      q('DELETE FROM clubs').run();
+      const ins = q('INSERT OR REPLACE INTO clubs(code_key,code,name,name_key,city) VALUES(?,?,?,?,?)');
+      for (const c of rows) ins.run(R.norm(c.code), c.code, c.name, R.norm(c.name), c.city || '');
+      return rows.length;
+    }),
+    clubRow: codeKey => q('SELECT code, name, city FROM clubs WHERE code_key=?').get(codeKey),
+    clubKeyByName: nameKey => q('SELECT code_key FROM clubs WHERE name_key=?').get(nameKey)?.code_key || null,
+    clubsByName(terms, limit = 60) {
+      const w = terms.map(() => `name_key LIKE ? ESCAPE '\\'`).join(' AND ');
+      return q(`SELECT code_key key, code, name, city FROM clubs WHERE ${w} LIMIT ?`).all(...terms.map(like), limit);
+    },
+    clubAthleteCount: ck => q('SELECT COUNT(DISTINCT name_key) n FROM ranking_entries WHERE club_key=?').get(ck).n,
   });
 
   // --- Migrazione una tantum dal vecchio data/db.json ---

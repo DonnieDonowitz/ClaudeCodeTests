@@ -32,7 +32,7 @@ function inferMeta(...texts) {
 }
 
 function listFiles(dir) {
-  return fs.readdirSync(dir).filter(f => /\.(xlsx|xls|csv|zip)$/i.test(f) && !f.startsWith('~$') && !f.startsWith('.')).sort();
+  return fs.readdirSync(dir).filter(f => /\.(xlsx|xls|csv|zip)$/i.test(f) && !f.startsWith('~$') && !f.startsWith('.') && f.toLowerCase() !== 'societa.csv').sort();
 }
 
 // Restituisce un resoconto per ogni lista trovata: { file, sheet, status, ... }.
@@ -60,4 +60,11 @@ function importDir(store, dir, { dryRun = false, force = false, season = '', log
   return report;
 }
 
-module.exports = { inferMeta, importDir, listFiles };
+// Importa rankings/societa.csv (codice → nome società), se presente.
+function importClubs(store, dir) {
+  const file = path.join(dir, 'societa.csv');
+  if (!fs.existsSync(file)) return null;
+  return store.importClubs(require('./clubs').readClubsCsv(file));
+}
+
+module.exports = { inferMeta, importDir, importClubs, listFiles };

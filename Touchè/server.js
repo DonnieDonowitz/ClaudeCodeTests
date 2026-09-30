@@ -4,6 +4,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const E = require('./lib/engine');
 const R = require('./lib/ranking');
 const Store = require('./lib/store');
+const { provinceOf } = require('./lib/clubs');
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.TOUCHE_DB || path.join(__dirname, 'data', 'touche.db');
@@ -72,6 +73,9 @@ function progress(c) {
   return { done: all.filter(m => m.forfeit || m.sa != null).length, total: all.length };
 }
 const status = c => c.de ? (c.de.rounds.at(-1)[0].winner ? 'concluso' : 'tabellone') : c.pools ? 'gironi' : 'iscrizioni';
+// Società: il testo libero delle gare si collega al codice Federscherma se il nome coincide con quello in societa.csv.
+const clubKeyOf = text => S.clubKeyByName(R.norm(text)) || R.norm(text);
+const clubInfo = code => { const r = S.clubRow(R.norm(code)), p = provinceOf(code); return { name: r ? r.name : code, code, city: r?.city || '', province: p ? p.name : '' }; };
 const nameOf = id => S.user(id)?.name;
 
 function view(c, req) {
@@ -80,6 +84,7 @@ function view(c, req) {
   const ri = S.rankingList(rankKey(c));
   out.rankingInfo = ri ? { updated: ri.updated, count: ri.count, file: ri.file } : null;
   out.referee = isAssigned(u, c) ? { id: u.id, name: u.name } : null;
+  out.athletes = c.athletes.map(a => ({ ...a, clubKey: a.club ? clubKeyOf(a.club) : '' }));
   if (c.pools) out.ranking = E.ranking(c.pools, active(c), c.lots);
   if (c.de) out.final = E.finalRanking(c.de, out.ranking.map(r => r.id));
   return out;
@@ -357,7 +362,7 @@ function people() {
       const k = R.nameKey(a.name); if (!k) continue;
       const p = ppl.get(k) || { key: k, name: a.name, club: '', comps: [] };
       p.name = a.name; if (a.club) p.club = a.club; p.comps.push([c, a]); ppl.set(k, p);
-      if (a.club) { const ck = R.norm(a.club), cl = clubs.get(ck) || { key: ck, name: a.club, athletes: new Set() }; cl.athletes.add(k); clubs.set(ck, cl); }
+      if (a.club) { const ck = clubKeyOf(a.club), cl = clubs.get(ck) || { key: ck, name: a.club, athletes: new Set() }; cl.athletes.add(k); clubs.set(ck, cl); }
     }
   }
   return { ppl, clubs };
@@ -370,31 +375,35 @@ route('GET', '/api/search', (req, b, res, [], url) => {
   const terms = termsOf(q), hit = s => { const n = R.norm(s); return terms.every(t => n.includes(t)); };
   const { ppl, clubs } = people(), ath = new Map();
   for (const p of ppl.values()) if (hit(p.name)) ath.set(p.key, { key: p.key, name: p.name, club: p.club, count: p.comps.length, live: p.comps.some(([c]) => inProgress(c)) });
-  for (const r of S.rankedAthletes(terms)) if (!ath.has(r.key)) ath.set(r.key, { key: r.key, name: r.name, club: r.club, count: 0, live: false });
-  const cl = new Map();
-  for (const c of clubs.values()) if (hit(c.name)) cl.set(c.key, { key: c.key, name: c.name, count: c.athletes.size });
-  for (const c of S.rankedClubs(terms)) cl.set(c.key, { key: c.key, name: cl.get(c.key)?.name || c.name, count: Math.max(c.count, cl.get(c.key)?.count || 0) });
+  for (const r of S.rankedAthletes(terms)) if (!ath.has(r.key)) ath.set(r.key, { key: r.key, name: r.name, club: clubInfo(r.club).name, count: 0, live: false });
+  const cl = new Map(), add = (key, name, extra) => { const o = cl.get(key); cl.set(key, { key, name: o?.name || name, sub: o?.sub || extra, count: S.clubAthleteCount(key) || clubs.get(key)?.athletes.size || 0 }); };
+  for (const c of clubs.values()) if (hit(c.name)) add(c.key, c.name, '');
+  for (const c of S.rankedClubs(terms)) { const i = clubInfo(c.name); add(c.key, i.name, [i.city, i.province].filter(Boolean).join(' · ')); }
+  for (const c of S.clubsByName(terms)) { const i = clubInfo(c.code); add(c.key, c.name, [c.city, i.province].filter(Boolean).join(' · ')); }
   return {
     competitions: S.comps().filter(c => hit(`${c.name} ${c.place} ${c.weapon} ${c.category}`)).map(c => compBrief(c)).sort(byDate).slice(0, 30),
     athletes: [...ath.values()].sort((x, y) => y.live - x.live || y.count - x.count || x.name.localeCompare(y.name)).slice(0, 30),
-    clubs: [...cl.values()].sort((x, y) => x.name.localeCompare(y.name)).slice(0, 30),
+    clubs: [...cl.values()].sort((x, y) => y.count - x.count || x.name.localeCompare(y.name)).slice(0, 30),
   };
 });
 route('GET', '/api/athletes/([^/]+)', (req, b, res, [key]) => {
   key = decodeURIComponent(key);
   const p = people().ppl.get(key), rankings = athleteRankings(key);
   if (!p && !rankings.length) bad('Schermidore non trovato', 404);
-  const rp = S.rankedPerson(key);
-  return { key, name: p?.name || rp.name, club: p?.club || rp?.club || '', rankings, competitions: (p?.comps || []).map(([c, a]) => compBrief(c, a)).sort(byDate) };
+  const rp = S.rankedPerson(key), ci = !p?.club && rp?.club ? clubInfo(rp.club) : null;
+  const club = p?.club || ci?.name || '', clubKey = p?.club ? clubKeyOf(p.club) : rp?.club ? R.norm(rp.club) : '';
+  return { key, name: p?.name || rp.name, club, clubKey, clubSub: ci ? [ci.city, ci.province].filter(Boolean).join(' · ') : '', rankings, competitions: (p?.comps || []).map(([c, a]) => compBrief(c, a)).sort(byDate) };
 });
 route('GET', '/api/clubs/([^/]+)', (req, b, res, [key]) => {
   key = decodeURIComponent(key);
-  const { ppl, clubs } = people(), cl = clubs.get(key), ranked = S.clubRanked(key);
-  if (!cl && !ranked.length) bad('Società non trovata', 404);
+  const { ppl, clubs } = people(), cl = clubs.get(key), ranked = S.clubRanked(key), row = S.clubRow(key);
+  if (!cl && !ranked.length && !row) bad('Società non trovata', 404);
   const all = new Map();
   for (const k of cl?.athletes || []) all.set(k, ppl.get(k).name);
   for (const r of ranked) if (!all.has(r.key)) all.set(r.key, r.name);
-  return { key, name: cl?.name || ranked[0].club, athletes: [...all].map(([k, name]) => { const p = ppl.get(k);
+  const i = ranked[0]?.club || row?.code ? clubInfo(row?.code || ranked[0].club) : null;
+  return { key, name: row?.name || cl?.name || i?.name, code: row?.code || (ranked[0] ? ranked[0].club : ''), sub: i ? [i.city, i.province].filter(Boolean).join(' · ') : '',
+    athletes: [...all].map(([k, name]) => { const p = ppl.get(k);
     return { key: k, name, count: p?.comps.length || 0, live: !!p?.comps.some(([c]) => inProgress(c)), rankings: athleteRankings(k).map(r => ({ category: r.category, weapon: r.weapon, gender: r.gender, pos: r.pos })) }; })
     .sort((x, y) => x.name.localeCompare(y.name)) };
 });

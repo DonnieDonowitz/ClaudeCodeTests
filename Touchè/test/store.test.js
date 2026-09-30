@@ -62,3 +62,13 @@ test('deduzione dai nomi dei fogli Federscherma', () => {
   assert.equal(inferMeta('ff', 'RGPG_ALLIEVE-I.xls', 'RANKING G.P.G. ALLIEVE FIORETTO FEMMINILE').category, 'allievi');
   assert.equal(inferMeta('FF G', 'RG.xlsx', 'RANKING GIOVANI 2026 FIORETTO FEMMINILE').category, 'giovani');
 });
+test('società: codice → nome, provincia dal prefisso', () => {
+  const s = open(':memory:'); const { provinceOf, readClubsCsv } = require('../lib/clubs');
+  assert.equal(provinceOf('PUFAN').name, 'Pesaro e Urbino');
+  s.importClubs([{ code: 'PUFAN', name: 'Fanum Fortunae Scherma', city: 'Fano' }]);
+  assert.equal(s.clubRow('pufan').name, 'Fanum Fortunae Scherma');
+  assert.equal(s.clubKeyByName(R.norm('Fanum Fortunae Scherma')), 'pufan');
+  assert.equal(s.clubsByName(['fanum'])[0].code, 'PUFAN');
+  const csv = readClubsCsv(path.join(__dirname, '..', 'rankings', 'societa.csv'));
+  assert.ok(csv.find(c => c.code === 'PUFAN'));
+});

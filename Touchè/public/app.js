@@ -174,7 +174,7 @@ async function compView(id, t, poll) {
 function athletesTab(c) {
   const e = c.canEdit && !c.pools, ri = c.rankingInfo;
   return `<div class="card"><table><tr><th>#</th><th>Ranking</th><th class="l">Atleta</th><th class="l">Società</th>${e ? '<th></th>' : ''}</tr>` +
-    c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(wkey0(a.club))}">${esc(a.club)}</a>` : ''}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
+    c.athletes.map((a, i) => `<tr style="${a.absent ? 'opacity:.45;text-decoration:line-through' : ''}"><td>${i + 1}</td><td><b class="${a.rank == null ? 'mute' : ''}">${a.rank ?? 9999}</b></td><td class="l"><a class="pl" href="#/a/${encodeURIComponent(wkey(a.name))}">${hl(a.name)}</a></td><td class="l">${a.club ? `<a class="pl" href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>` : ''}</td>${e ? `<td><button class="small" data-ab="${a.id}">${a.absent ? 'presente' : 'assente'}</button> <button class="small danger" data-rm="${a.id}">✕</button></td>` : ''}</tr>`).join('') +
     `</table>${c.athletes.length ? '' : '<p class="mute">Nessun iscritto.</p>'}<p class="hint">Gli atleti sono ordinati per ranking; senza ranking valgono 9999 e vengono sorteggiati.</p></div>` +
     (e ? `<div class="card"><label>Ranking Federscherma · ${esc(c.category)} · ${esc(c.weapon)} · ${c.gender === 'F' ? 'femminile' : 'maschile'}</label>
       <p class="mute">${ri ? `Caricato: ${ri.count} atleti da <b>${esc(ri.file)}</b> (${new Date(ri.updated).toLocaleDateString('it-IT')}). Carica di nuovo il file quando il ranking viene aggiornato.` : 'Nessun ranking caricato. Scarica il file Excel dal sito della Federscherma e caricalo qui.'}</p>
@@ -352,7 +352,7 @@ const compRow = c => `<a class="item" href="#/c/${c.id}/_${HLNEXT ? '/' + encode
   <div><span class="badge ${c.status}">${c.live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span></div></a>`;
 let HLNEXT = '';
 const athRow = a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${esc(a.club || 'Società non indicata')} · ${a.count} ${a.count === 1 ? 'gara' : 'gare'}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`;
-const clubRow = c => `<a class="item" href="#/s/${encodeURIComponent(c.key)}"><div><b>${esc(c.name)}</b><div class="mute">${c.count} ${c.count === 1 ? 'schermidore' : 'schermidori'}</div></div><div></div></a>`;
+const clubRow = c => `<a class="item" href="#/s/${encodeURIComponent(c.key)}"><div><b>${esc(c.name)}</b><div class="mute">${[c.sub, c.count + (c.count === 1 ? ' schermidore' : ' schermidori')].filter(Boolean).map(esc).join(' · ')}</div></div><div></div></a>`;
 
 async function searchView(q) {
   q = decodeURIComponent(q || '');
@@ -371,7 +371,7 @@ async function athleteView(key) {
     `<tr><td class="l">${esc(WEAPON(r.weapon))}</td><td class="l">${esc(catLabel(r.category))}</td><td>${r.gender === 'F' ? 'F' : 'M'}</td><td><b>${r.pos}°</b></td></tr>`).join('')}</table>
     <p class="hint">Dai ranking Federscherma caricati (${[...new Set(a.rankings.map(r => r.file).filter(Boolean))].map(esc).join(', ') || 'file manuale'}).</p></div>`
     : '<p class="mute">Nessun ranking disponibile per questo schermidore nei file caricati.</p>';
-  $('#app').innerHTML = `<h1>${esc(a.name)}</h1><div class="mute">${a.club ? `Società: <a href="#/s/${encodeURIComponent(wkey0(a.club))}">${esc(a.club)}</a>` : 'Società non indicata'}</div>
+  $('#app').innerHTML = `<h1>${esc(a.name)}</h1><div class="mute">${a.club ? `Società: <a href="#/s/${encodeURIComponent(a.clubKey)}">${esc(a.club)}</a>${a.clubSub ? ` · ${esc(a.clubSub)}` : ''}` : 'Società non indicata'}</div>
     <h2>Ranking</h2>${rk}
     ${live.length ? `<h2><i class="dot"></i>In corso</h2><div class="list">${live.map(compRow).join('')}</div>` : ''}
     <h2>${live.length ? 'Gare precedenti e in programma' : 'Competizioni'}</h2><div class="list">${past.map(compRow).join('') || '<p class="mute" style="padding:16px;margin:0">Nessun’altra gara.</p>'}</div>`;
@@ -379,7 +379,7 @@ async function athleteView(key) {
 async function clubView(key) {
   key = decodeURIComponent(key); HLNEXT = '';
   const c = await api('GET', '/clubs/' + encodeURIComponent(key));
-  $('#app').innerHTML = `<h1>${esc(c.name)}</h1><p class="mute">${c.athletes.length} ${c.athletes.length === 1 ? 'schermidore' : 'schermidori'}</p>
+  $('#app').innerHTML = `<h1>${esc(c.name)}</h1><p class="mute">${[c.code, c.sub, c.athletes.length + (c.athletes.length === 1 ? ' schermidore' : ' schermidori')].filter(Boolean).map(esc).join(' · ')}</p>
     <div class="list">${c.athletes.map(a => `<a class="item" href="#/a/${encodeURIComponent(a.key)}"><div><b>${esc(a.name)}</b><div class="mute">${a.rankings.map(r => `${esc(WEAPON(r.weapon))} ${esc(catLabel(r.category))} ${r.gender}: ${r.pos}°`).join(' · ') || `${a.count} ${a.count === 1 ? 'gara' : 'gare'}`}</div></div>${a.live ? '<div><span class="badge"><i class="dot"></i>In gara</span></div>' : '<div></div>'}</a>`).join('')}</div>`;
 }
 
@@ -394,7 +394,7 @@ function initSearch() {
       const r = await api('GET', '/search?q=' + encodeURIComponent(q.value)).catch(() => null); if (!r) return;
       const grp = (title, arr, href, label, sub) => arr.length ? `<div class="sg">${title}</div>` + arr.slice(0, 4).map(x => `<a href="${href(x)}"><b>${esc(label(x))}</b><small>${esc(sub(x))}</small></a>`).join('') : '';
       const html = grp('Competizioni', r.competitions, x => `#/c/${x.id}/_`, x => x.name, x => `${x.weapon} · ${x.category} · ${x.date}`) +
-        grp('Schermidori', r.athletes, x => `#/a/${encodeURIComponent(x.key)}`, x => x.name, x => x.club) + grp('Società', r.clubs, x => `#/s/${encodeURIComponent(x.key)}`, x => x.name, x => `${x.count} schermidori`);
+        grp('Schermidori', r.athletes, x => `#/a/${encodeURIComponent(x.key)}`, x => x.name, x => x.club) + grp('Società', r.clubs, x => `#/s/${encodeURIComponent(x.key)}`, x => x.name, x => [x.sub, `${x.count} schermidori`].filter(Boolean).join(' · '));
       box.innerHTML = html + (html ? `<a class="all" href="#/cerca/${encodeURIComponent(q.value)}">Tutti i risultati</a>` : '<div class="sg">Nessun risultato</div>');
       box.classList.add('open');
     }, 180);
