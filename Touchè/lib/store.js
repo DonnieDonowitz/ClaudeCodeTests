@@ -131,6 +131,8 @@ function open(file) {
       return { key, count: entries.length, added, changed, removed: [...old.keys()].filter(k => !seen.has(k)).length, first: old.size === 0 };
     }),
     rankingLists: () => q('SELECT key, category, weapon, gender, season, file, updated, count FROM ranking_lists ORDER BY weapon, category, gender').all(),
+    removeRankingFile: file => q('DELETE FROM ranking_lists WHERE file=?').run(file).changes,
+    userByEmail: email => pub(q('SELECT * FROM users WHERE email=?').get(String(email).toLowerCase())),
     rankingList: key => q('SELECT key, category, weapon, gender, season, file, file_hash, updated, count FROM ranking_lists WHERE key=?').get(key),
     rankOf: (key, name) => q('SELECT pos FROM ranking_entries WHERE list_key=? AND name_key=?').get(key, R.nameKey(name))?.pos ?? null,
     athleteRankings: nk => q(`SELECT l.category, l.weapon, l.gender, l.season, l.file, l.updated, e.pos FROM ranking_entries e JOIN ranking_lists l ON l.key=e.list_key

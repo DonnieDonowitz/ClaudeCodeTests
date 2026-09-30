@@ -207,3 +207,4 @@ header{height:76px}
 .logo img{width:60px;height:60px;padding:4px}
 .search{top:0}#sugg{top:46px}
 @media(max-width:700px){header{height:auto}.logo img{width:48px;height:48px}.logo{font-size:26px}}
+h2{scroll-margin-top:84px}

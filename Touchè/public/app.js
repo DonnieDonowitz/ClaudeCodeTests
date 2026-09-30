@@ -35,7 +35,9 @@ function nav() {
 }
 
 /* ---------- Home / dashboard ---------- */
-async function home(zone) {
+let homeLimit = 30, homeZone;
+async function home(zone, poll) {
+  if (zone !== homeZone) { homeZone = zone; homeLimit = 30; }
   const [list, live] = await Promise.all([api('GET', '/competitions'), api('GET', '/live')]);
   const count = {}, active = {};
   list.forEach(c => { count[c.zone] = (count[c.zone] || 0) + 1; if (c.status === 'gironi' || c.status === 'tabellone') active[c.zone] = true; });
@@ -48,10 +50,12 @@ async function home(zone) {
       const wa = f.sa > f.sb;
       return `<div class="r"><div>${wa ? '<b>' + esc(f.a) + '</b>' : esc(f.a)} <span class="sc">${f.forfeit ? 'V*' : f.sa + ' – ' + f.sb}</span> ${!wa ? '<b>' + esc(f.b) + '</b>' : esc(f.b)}
         <small>${esc(f.phase)} · ${esc(f.c)}${f.ref ? ' · Arb. ' + esc(f.ref) : ''}</small></div><span class="mute">${ago(f.t)}</span></div>`; }).join('')}</div>` : ''}
-    <h2>${zone ? esc(ZONE[zone]) : 'Tutte le gare'}</h2><div class="list">${shown.map(c => {
+    <h2 id="zlist">${zone ? logo(zone, 1) + esc(ZONE[zone]) + ` · ${shown.length} gare` : 'Tutte le gare'}</h2><div class="list">${shown.slice(0, homeLimit).map(c => {
       const pr = c.progress, live = c.status === 'gironi' || c.status === 'tabellone';
-      return `<a class="item" href="#/c/${c.id}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${esc(ZONE[c.zone])} · ${esc(c.weapon)} · ${esc(c.category)} · ${esc(c.place)} · ${esc(c.date)}</div></div>
-      <div><span class="badge ${c.status}">${live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span>${live && pr.total ? `<div class="bar"><i style="width:${Math.round(100 * pr.done / pr.total)}%"></i></div>` : `<span class="mute">${c.athletes} atleti</span>`}</div></a>`; }).join('') || '<p class="mute" style="padding:16px;margin:0">Nessuna gara in questa zona.</p>'}</div>`;
+      return `<a class="item" href="#/c/${c.id}"><div><b>${esc(c.name)}</b><div class="mute">${logo(c.zone, 1)}${[ZONE[c.zone], c.weapon, `${c.category} ${c.gender || ''}`.trim(), c.place, c.date].filter(Boolean).map(esc).join(' · ')}</div></div>
+      <div><span class="badge ${c.status}">${live ? '<i class="dot"></i>' : ''}${STATUS[c.status]}</span>${live && pr.total ? `<div class="bar"><i style="width:${Math.round(100 * pr.done / pr.total)}%"></i></div>` : `<span class="mute">${c.athletes} atleti</span>`}</div></a>`; }).join('') || '<p class="mute" style="padding:16px;margin:0">Nessuna gara in questa zona.</p>'}</div>${shown.length > homeLimit ? `<p style="text-align:center"><button id="more">Mostra altre ${Math.min(30, shown.length - homeLimit)} di ${shown.length - homeLimit}</button></p>` : ''}`;
+  const more = $('#more'); if (more) more.onclick = () => { homeLimit += 30; home(zone, true); };
+  if (zone && !poll) $('#zlist')?.scrollIntoView({ block: 'start' });
 }
 
 /* ---------- Accesso unico per admin, admin regionali, direttori di gara e arbitri ---------- */
@@ -437,7 +441,7 @@ async function render(poll) {
     else if (sect === 's') await clubView(id);
     else if (sect === 'new') await newView();
     else if (sect === 'c') { await compView(id, t, poll === true); if (HL && poll !== true) document.querySelector('.hl')?.scrollIntoView({ block: 'center' }); timer = setTimeout(() => render(true), 4000); return; }
-    else { await home(sect === 'z' ? id : null); timer = setTimeout(() => render(true), 4000); }
+    else { await home(sect === 'z' ? id : null, poll === true); timer = setTimeout(() => render(true), 4000); }
   } catch (e) { $('#app').innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
 }
 addEventListener('hashchange', () => render());
